@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=428, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>수면 기록 · UI 컴포넌트</title>
+<style>
+:root{--bg-top:#161520;--bg-bottom:#3271A6;--spring:cubic-bezier(.34,1.56,.64,1);--soft:cubic-bezier(.22,1,.36,1)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{height:100%;background:#000;overscroll-behavior:none}
+body{display:flex;justify-content:center;color:#fff;font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.app{position:relative;width:428px;height:926px;max-height:100vh;overflow:hidden;
+  background:linear-gradient(180deg,var(--bg-top) 0%,var(--bg-top) 40%,var(--bg-bottom) 100%)}
+.screen{position:absolute;inset:0 0 120px 0;padding:44px 21px 0;opacity:0;pointer-events:none;transform:translateX(48px) scale(.98);
+  transition:transform .6s var(--soft),opacity .35s ease}
+.screen.active{opacity:1;pointer-events:auto;transform:none}
+.screen.out{transform:translateX(-48px) scale(.98)}
+.q h2{font-size:34px;font-weight:800;letter-spacing:-.5px;line-height:1.2}
+.q p{font-size:13px;font-weight:700;margin:6px 0 0 6px}
+.body{margin-top:22px;position:relative}
+.next{position:absolute;left:21px;right:22px;bottom:23px;height:76px;border:2px solid #fff;border-radius:38px;font-size:24px;font-weight:700;
+  transition:transform .35s var(--spring),background .25s}
+.next:active{transform:scale(.95);background:rgba(255,255,255,.12)}
+
+/* ── 항목 선택 / 슬라이더 ── */
+.choice{position:relative;width:308px;height:52px;margin-left:34px;display:flex;justify-content:space-between}
+.choice.track{touch-action:pan-y}
+.dot{position:relative;z-index:2;flex:none;width:52px;height:52px;border-radius:50%;border:2px solid #fff;display:grid;place-items:center;
+  font-size:16px;font-weight:300;transition:transform .4s var(--spring),font-weight .2s}
+.dot:active{transform:scale(.88)}
+.dot.on{font-weight:500}
+.aura{position:absolute;width:52px;height:52px;border-radius:50%;will-change:transform;pointer-events:none;
+  --base:#1b2fd0;--a:#2de0e8;--b:#38a0ff;--c:#8a5cff;--amp:3px;--t1:5.8s;--t2:7s;--t3:9s;--t4:6.2s;--t5:8s;--d1:0s;--d2:0s;--d3:0s;--d4:0s;--d5:0s;--dir:normal}
+.aura b{position:absolute;will-change:transform,border-radius;animation-direction:var(--dir)}
+.aura b:nth-child(1){inset:2px;background:radial-gradient(circle,var(--base) 0,var(--base) 55%,transparent 100%);filter:blur(2.5px);animation:body var(--t1) ease-in-out var(--d1) infinite}
+.aura b:nth-child(2){inset:-2px;background:radial-gradient(circle at 30% 30%,var(--a) 0,transparent 55%);filter:blur(4px);mix-blend-mode:screen;animation:fl1 var(--t2) ease-in-out var(--d2) infinite}
+.aura b:nth-child(3){inset:-2px;background:radial-gradient(circle at 70% 68%,var(--b) 0,transparent 58%);filter:blur(5px);mix-blend-mode:screen;animation:fl2 var(--t3) ease-in-out var(--d3) infinite}
+.aura b:nth-child(4){inset:-1px;background:radial-gradient(circle at 50% 80%,var(--c) 0,transparent 50%);filter:blur(5px);mix-blend-mode:screen;animation:fl3 var(--t4) ease-in-out var(--d4) infinite}
+.aura b:nth-child(5){inset:-6px;background:radial-gradient(circle,var(--b) 0,transparent 66%);opacity:.3;filter:blur(6px);animation:halo var(--t5) ease-in-out var(--d5) infinite}
+@keyframes body{
+ 0%{border-radius:50%;transform:rotate(0) scale(1)}
+ 25%{border-radius:56% 44% 52% 48%/47% 55% 45% 53%;transform:rotate(70deg) scale(1.05,.97)}
+ 50%{border-radius:45% 55% 42% 58%/56% 44% 56% 44%;transform:rotate(180deg) scale(.97,1.06)}
+ 75%{border-radius:54% 46% 58% 42%/44% 56% 47% 53%;transform:rotate(270deg) scale(1.06,.98)}
+ 100%{border-radius:50%;transform:rotate(360deg) scale(1)}}
+@keyframes fl1{0%{transform:translate(0,0) rotate(0)}33%{transform:translate(var(--amp),calc(var(--amp)*-.9)) rotate(130deg) scale(1.12)}66%{transform:translate(calc(var(--amp)*-.9),var(--amp)) rotate(250deg) scale(.92)}100%{transform:translate(0,0) rotate(360deg)}}
+@keyframes fl2{0%{transform:translate(0,0) rotate(360deg)}40%{transform:translate(calc(var(--amp)*-1.1),var(--amp)) rotate(190deg) scale(1.15)}75%{transform:translate(var(--amp),calc(var(--amp)*1.1)) rotate(80deg) scale(.9)}100%{transform:translate(0,0) rotate(0)}}
+@keyframes fl3{0%{transform:translate(0,0) rotate(0)}50%{transform:translate(calc(var(--amp)*.8),calc(var(--amp)*-1.2)) scale(1.18) rotate(-160deg)}100%{transform:translate(0,0) rotate(-360deg)}}
+@keyframes halo{0%,100%{transform:scale(.94);opacity:.22}50%{transform:scale(1.08);opacity:.4}}
+.orb{z-index:1;left:0;top:0}
+.seg{position:absolute;z-index:0;top:50%;height:12px;margin-top:-6px;border-top:1.5px solid #c9c9c9;border-bottom:1.5px solid #c9c9c9;overflow:hidden}
+.seg i{position:absolute;inset:0;opacity:0}
+
+/* ── 시각 / 횟수 휠 ── */
+.time{display:flex;align-items:center;padding-left:50px}
+.ampm{display:flex;flex-direction:column;gap:14px;width:51px;font-size:16px;font-weight:600}
+.ampm button{text-align:left;color:#9a9aa6;transition:color .25s,transform .4s var(--spring);transform-origin:left;padding:2px 0}
+.ampm button.on{color:#fff;transform:scale(1.12)}
+.wheel{position:relative;flex:none;width:98px;height:62px;border:2px solid #fff;border-radius:12px;overflow:hidden;touch-action:none;cursor:grab}
+.wheel.fixed{cursor:default}
+.wheel div{position:absolute;left:0;right:0;top:0;height:58px;display:grid;place-items:center;font-size:30px;font-weight:600;
+  font-variant-numeric:tabular-nums;will-change:transform}
+.colon{width:28px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.colon i{width:6px;height:6px;border-radius:50%;background:#fff}
+.count{display:flex;align-items:center;justify-content:center;gap:20px;padding-left:20px}
+.stepper{display:flex;flex-direction:column;align-items:center;gap:4px}
+.chev{width:60px;height:22px;display:grid;place-items:center;transition:transform .35s var(--spring)}
+.chev:active{transform:scale(.75)}
+.chev svg{width:22px;height:10px;stroke:#fff;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.unit{font-size:22px;font-weight:700}
+
+/* ── 항목 배지 (가로 스크롤) ── */
+.badges{overflow-x:scroll;overflow-y:hidden;scrollbar-width:none;width:428px;margin:0 -21px;touch-action:pan-x;-webkit-overflow-scrolling:touch;padding:6px 0;cursor:grab}
+.badges.grab{cursor:grabbing}
+.badges::-webkit-scrollbar{display:none}
+.bwrap{width:max-content;padding-right:36px}
+.brow{display:flex;gap:18px;padding-left:36px}
+.brow+.brow{margin-top:14px;padding-left:96px}
+.badge{flex:none;width:92px;height:36px;border-radius:18px;font-size:16px;font-weight:600;color:#fff;background:var(--c);
+  display:flex;align-items:center;justify-content:center;line-height:1;padding:0;
+  box-shadow:0 0 0 0 #fff;transition:transform .45s var(--spring),box-shadow .3s}
+.badge:active{transform:scale(.9)}
+.badge.on{transform:scale(1.08);box-shadow:0 0 0 2px #161520,0 0 0 4px #fff}
+.badge .ck{display:inline-block;width:0;overflow:hidden;white-space:nowrap;transition:width .3s var(--soft)}
+.badge.on .ck{width:16px}
+
+/* ── 기분 선택 ── */
+.mood{position:relative;height:476px;padding-left:28px;touch-action:none;cursor:grab}
+.pill{position:absolute;left:28px;top:0;width:76px;height:476px;border:5px solid #fff;border-radius:38px}
+.mglow{left:3px;top:0;width:58px;height:58px}
+.face{position:absolute;left:5px;width:56px;height:56px;border-radius:50%;border:2px solid #fff;display:grid;place-items:center;font-size:20px;font-weight:500;
+  transition:transform .45s var(--spring)}
+.face.on{transform:scale(1.1)}
+.mlab{position:absolute;color:#a9a9b0;font-size:16px;font-weight:600;transform-origin:left center;transition:transform .5s var(--spring),color .3s;pointer-events:none}
+.mlab small{display:block;font-size:12px;font-weight:600;margin:2px 0 0 4px;color:#d8d8dc}
+.mlab.on{color:#fff;transform:scale(1.22) translateX(2px)}
+.mlab.on small{color:#fff}
+</style>
+</head>
+<body>
+<main class="app">
+
+  <section class="screen active" id="s0">
+    <div class="q"><h2>항목 선택</h2><p>질문설명</p>
+      <div class="body"><div class="choice" id="choice1"></div></div></div>
+    <div class="q" style="margin-top:96px"><h2>슬라이더</h2><p>질문설명</p>
+      <div class="body"><div class="choice track" id="slider1"></div></div></div>
+    <div class="q" style="margin-top:80px"><h2>시각 선택</h2><p>질문설명</p>
+      <div class="body"><div class="time" id="time1"></div></div></div>
+  </section>
+
+  <section class="screen" id="s1">
+    <div class="q"><h2>횟수 선택</h2><p>질문설명</p>
+      <div class="body"><div class="count" id="count1"></div></div></div>
+    <div class="q" style="margin-top:60px"><h2>항목 배지 선택</h2><p>질문설명</p>
+      <div class="body"><div class="badges" id="badges1"></div></div></div>
+  </section>
+
+  <section class="screen" id="s2">
+    <div class="q" style="margin-bottom:18px"><h2>기분 선택</h2><p>질문설명</p></div>
+    <div class="mood" id="mood1"></div>
+  </section>
+
+  <button class="next" id="next" type="button">다음</button>
+</main>
+
+<script>
+const buzz=(n=8)=>navigator.vibrate&&navigator.vibrate(n);
+const $=(s,r=document)=>r.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+const mod=(a,n)=>((a%n)+n)%n;
+
+/* ── 스프링 엔진: 살짝 튕기는 쫀득한 움직임의 핵심 ── */
+function Spring(x0,onUpdate,{k=200,c=17}={}){
+  let x=x0,v=0,t=x0,raf=0,last=0;
+  function tick(now){
+    const dt=Math.min(.032,(now-last)/1000||.016);last=now;
+    for(let i=0;i<3;i++){const a=-k*(x-t)-c*v;v+=a*dt/3;x+=v*dt/3}
+    if(Math.abs(x-t)<.04&&Math.abs(v)<.4){x=t;v=0;onUpdate(x);raf=0;return}
+    onUpdate(x);raf=requestAnimationFrame(tick);
+  }
+  const start=()=>{if(!raf){last=performance.now();raf=requestAnimationFrame(tick)}};
+  return{
+    get x(){return x},get target(){return t},
+    to(nt,p){t=nt;if(p){k=p.k??k;c=p.c??c}start()},
+    set(nx){x=nx;t=nx;v=0;onUpdate(x)},
+    kick(vel){v=vel;start()},
+    params(p){k=p.k??k;c=p.c??c}
+  };
+}
+
+
+/* 오로라 오브 생성: 인스턴스마다 속도·방향·진폭·위상이 모두 다름 */
+function makeAura(cls){
+  const e=el('div','aura '+(cls||''),'<b></b><b></b><b></b><b></b><b></b>');
+  const r=(a,b)=>a+Math.random()*(b-a);
+  e.style.setProperty('--amp',r(2.5,4.5).toFixed(1)+'px');
+  [5.2,6.5,8,5.6,7.4].forEach((t,i)=>{
+    e.style.setProperty('--t'+(i+1),(t*r(.7,1.4)).toFixed(2)+'s');
+    e.style.setProperty('--d'+(i+1),(-r(0,10)).toFixed(2)+'s');
+  });
+  e.style.setProperty('--dir',Math.random()<.5?'normal':'reverse');
+  return e;
+}
+
+/* ===== 항목 선택(클릭만) / 슬라이더(드래그+클릭) ===== */
+function Choice(root,{n=4,track=false,index=3,onChange}){
+  const dots=[],segs=[];let cur=index;
+  const orb=makeAura('orb');root.append(orb);
+  for(let i=0;i<n;i++){
+    if(track&&i>0){const s=el('div','seg','<i></i>');root.append(s);segs.push(s)}
+    const d=el('button','dot','항목');d.type='button';root.append(d);dots.push(d);
+  }
+  const cx=i=>dots[i].offsetLeft+26;
+  /* 기체 통과 모션: 틈에서는 세로로 얇게 눌리고 가로로 길게 늘어남.
+     눌림 값은 느슨한 스프링이라 틈을 빠져나오면 '푸욱' 부풀며 되돌아옴 */
+  let ox=0,sqx=1,sqy=1,px=0;
+  function apply(){
+    const w=sqx,h=sqy;
+    orb.style.transform=`translateX(${ox-26}px) scale(${w},${h})`;
+  }
+  const sqSp=Spring(1,v=>{sqy=v;sqx=1+(1-clamp(v,.2,1.3))*.55;apply()},{k:150,c:9});
+  function render(x){
+    ox=x;
+    if(track){
+      let d=1e9;dots.forEach((_,k)=>d=Math.min(d,Math.abs(cx(k)-x)));
+      const tgt=1-(1-13/52)*smooth(20,34,d);   // 점 안=1, 틈 한가운데=13/52
+      if(Math.abs(tgt-sqSp.target)>.002)sqSp.to(tgt);
+      segs.forEach((g,k)=>{
+        const a=cx(k)+26,b=cx(k+1)-26;
+        g.style.left=a-2+'px';g.style.width=(b-a+4)+'px';
+        const gl=$('i',g),dist=x<a?a-x:x>b?x-b:0,o=1-smooth(0,34,dist);
+        gl.style.opacity=o;gl.style.background=`radial-gradient(circle 34px at ${x-a+2}px 50%,rgba(90,170,255,.95) 0,rgba(60,130,255,.45) 55%,rgba(60,130,255,0) 100%)`;
+      });
+    }
+    apply();
+  }
+  const sp=Spring(0,render,{k:230,c:18});
+  function paint(){dots.forEach((d,k)=>d.classList.toggle('on',k===cur))}
+  function select(i,vib=true){if(i===cur)return;cur=i;paint();vib&&buzz();onChange&&onChange(i)}
+  function init(){sp.set(cx(cur));paint()}
+  if(!track){
+    dots.forEach((d,i)=>d.addEventListener('click',()=>{select(i);sp.to(cx(i),{k:230,c:18})}));
+  }else{
+    let drag=false;
+    const px=e=>e.clientX-root.getBoundingClientRect().left;
+    const nearest=x=>{let b=0,bd=1e9;dots.forEach((_,k)=>{const dd=Math.abs(cx(k)-x);if(dd<bd){bd=dd;b=k}});return b};
+    root.addEventListener('pointerdown',e=>{drag=true;root.setPointerCapture(e.pointerId);
+      const x=clamp(px(e),cx(0),cx(n-1));select(nearest(x));sp.to(x,{k:420,c:36})});
+    root.addEventListener('pointermove',e=>{if(!drag)return;
+      const x=clamp(px(e),cx(0),cx(n-1));select(nearest(x),true);sp.to(x,{k:420,c:36})});
+    const up=()=>{if(!drag)return;drag=false;sp.to(cx(cur),{k:230,c:17})};
+    root.addEventListener('pointerup',up);root.addEventListener('pointercancel',up);
+  }
+  requestAnimationFrame(init);
+  return{get value(){return cur}};
+}
+
+/* ===== 휠: 시각(루프) / 횟수(고정 범위) ===== */
+function Wheel(root,{items,index=0,loop=false,fixed=false,onChange}){
+  const H=58,N=items.length,nodes=items.map(t=>{const d=el('div','',t);root.append(d);return d});
+  root.classList.toggle('fixed',fixed);
+  let pos=index*H,lastIdx=-1;
+  const maxP=(N-1)*H;
+  const idxOf=p=>loop?mod(Math.round(p/H),N):clamp(Math.round(p/H),0,N-1);
+  function render(p){
+    pos=p;const half=N*H/2;
+    nodes.forEach((d,i)=>{
+      let y=i*H-p;if(loop)y=mod(y+half,N*H)-half;
+      if(Math.abs(y)>H*1.3){d.style.display='none'}else{d.style.display='';d.style.transform=`translateY(${y}px)`}
+    });
+    const k=idxOf(p);if(k!==lastIdx){if(lastIdx>=0){buzz(5);onChange&&onChange(k,items[k])}lastIdx=k}
+  }
+  const sp=Spring(pos,render,{k:170,c:19});
+  sp.set(pos);
+  if(!fixed){
+    let drag=false,sy=0,sp0=0,ly=0,lt=0,v=0;
+    const rub=p=>loop?p:(p<0?p*.35:p>maxP?maxP+(p-maxP)*.35:p);
+    root.addEventListener('pointerdown',e=>{drag=true;root.setPointerCapture(e.pointerId);sy=ly=e.clientY;sp0=sp.x;lt=performance.now();v=0;sp.set(sp.x)});
+    root.addEventListener('pointermove',e=>{if(!drag)return;
+      const now=performance.now();v=.6*v+.4*((ly-e.clientY)/Math.max(1,now-lt));ly=e.clientY;lt=now;
+      sp.set(rub(sp0+(sy-e.clientY)))});
+    const up=()=>{if(!drag)return;drag=false;
+      v=clamp(v,-3,3);let t=Math.round((sp.x+v*150)/H);if(!loop)t=clamp(t,0,N-1);
+      sp.to(t*H,{k:170,c:19});sp.kick(v*1000)};
+    root.addEventListener('pointerup',up);root.addEventListener('pointercancel',up);
+  }
+  return{go(i){sp.to(clamp(i,loop?-1e9:0,loop?1e9:N-1)*H,{k:200,c:17})},
+    step(d){const t=(Math.round(sp.x/H)+d);sp.to((loop?t:clamp(t,0,N-1))*H,{k:260,c:16});buzz(7)},
+    set(i){sp.set(i*H)},get index(){return idxOf(sp.x)}};
+}
+
+/* ===== 시각 선택: AM/PM + 시:분 (기본값=현재 시각, 분 '--' 고정 옵션) ===== */
+function TimePicker(root,{minuteFixed=false}={}){
+  const now=new Date();let ap=now.getHours()>=12?'PM':'AM';
+  const box=el('div','ampm');
+  const am=el('button','','AM'),pm=el('button','','PM');am.type=pm.type='button';box.append(am,pm);
+  const pick=(p,vib=true)=>{ap=p;am.classList.toggle('on',p==='AM');pm.classList.toggle('on',p==='PM');vib&&buzz(6)};
+  am.onclick=()=>pick('AM');pm.onclick=()=>pick('PM');pick(ap,false);
+  const hw=el('div','wheel'),mw=el('div','wheel'),colon=el('div','colon','<i></i><i></i>');
+  root.append(box,hw,colon,mw);
+  const hours=Array.from({length:12},(_,i)=>String(i+1));
+  const mins=Array.from({length:60},(_,i)=>String(i).padStart(2,'0'));
+  const h=Wheel(hw,{items:hours,loop:true,index:(now.getHours()%12||12)-1});
+  const m=minuteFixed?Wheel(mw,{items:['--'],fixed:true}):Wheel(mw,{items:mins,loop:true,index:now.getMinutes()});
+  return{get ampm(){return ap},get hour(){return h.index+1},get minute(){return minuteFixed?null:m.index}};
+}
+TimePicker($('#time1'));
+
+/* ===== 화면 1 ===== */
+Choice($('#choice1'),{n:4,index:3});
+Choice($('#slider1'),{n:4,track:true,index:3});
+
+/* ===== 화면 2: 횟수(기본 0), 배지 ===== */
+(function(){
+  const root=$('#count1');
+  const up=el('button','chev','<svg viewBox="0 0 22 10"><path d="M2 8l9-6 9 6"/></svg>');
+  const dn=el('button','chev','<svg viewBox="0 0 22 10"><path d="M2 2l9 6 9-6"/></svg>');
+  const w=el('div','wheel'),st=el('div','stepper');st.append(up,w,dn);
+  root.append(st,el('span','unit','회'));
+  const wh=Wheel(w,{items:Array.from({length:31},(_,i)=>String(i)),index:0});
+  up.onclick=()=>wh.step(1);dn.onclick=()=>wh.step(-1);
+})();
+(function(){
+  const root=$('#badges1'),wrap=el('div','bwrap'),r1=el('div','brow'),r2=el('div','brow');
+  const row1=['#ee8f33','#33bfea','#a23ae8','#d94a6a'],row2=['#3568ee','#33ee88','#ee8f33','#8a8f99'];
+  const mk=(c,row)=>{const b=el('button','badge','<span class="ck">✓</span><span>항목</span>');b.type='button';
+    b.style.setProperty('--c',c);b.onclick=()=>{b.classList.toggle('on');buzz(8)};row.append(b)};
+  row1.forEach(c=>mk(c,r1));row2.forEach(c=>mk(c,r2));
+  wrap.append(r1,r2);root.append(wrap);
+  /* 마우스 드래그 + 휠 → 가로 스크롤 (터치는 기본 스크롤 사용) */
+  let down=false,sx=0,sl=0,moved=false,lx=0,lt=0,vel=0,raf=0;
+  root.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')return;down=true;moved=false;sx=lx=e.clientX;sl=root.scrollLeft;lt=performance.now();vel=0;cancelAnimationFrame(raf)});
+  window.addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-sx;
+    if(Math.abs(dx)>5){moved=true;root.classList.add('grab')}
+    if(moved){root.scrollLeft=sl-dx;const n=performance.now();vel=(lx-e.clientX)/Math.max(1,n-lt);lx=e.clientX;lt=n}});
+  window.addEventListener('pointerup',()=>{if(!down)return;down=false;root.classList.remove('grab');
+    if(moved){let v=vel*16;const f=()=>{root.scrollLeft+=v;v*=.93;if(Math.abs(v)>.3)raf=requestAnimationFrame(f)};f()}});
+  root.addEventListener('click',e=>{if(moved){e.stopPropagation();e.preventDefault();moved=false}},true);
+  root.addEventListener('wheel',e=>{if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){root.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
+})();
+
+/* ===== 화면 3: 기분 (위아래 드래그, 기분별 오브 색) ===== */
+(function(){
+  const root=$('#mood1'),pill=el('div','pill');root.append(pill);
+  const faces=[':D',':)',':|',':(',';<'];
+  const colors=[[52,112,240],[46,222,120],[238,214,24],[244,148,44],[228,56,66]]; // 파랑>초록>노랑>주황>빨강
+  const STEP=95,TOP=14,Y0=TOP-2,Y1=Y0+4*STEP;
+  const glow=makeAura('mglow');pill.append(glow);
+  const fe=[],le=[];
+  faces.forEach((f,i)=>{
+    const d=el('div','face',f);d.style.top=(TOP+i*STEP)+'px';pill.append(d);fe.push(d);
+    const l=el('div','mlab','<span>비활성화 항목</span><small>항목 설명</small>');
+    l.style.top=(TOP+i*STEP+4)+'px';l.style.left=(i===3?145:150)+'px';root.append(l);le.push(l);
+  });
+  let cur=-1;
+  const mix=(p,q,t)=>p.map((v,k)=>Math.round(v+(q[k]-v)*t));
+  const css=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
+  function render(y){
+    const f=clamp((y-Y0)/STEP,0,4),i=Math.floor(f),j=Math.min(4,i+1),t=f-i;
+    const col=mix(colors[i],colors[j],t),nb=colors[Math.min(4,Math.round(f)+(f%1<.5?1:-1)<0?0:Math.min(4,Math.round(f)+(f%1<.5?1:-1)))];
+    glow.style.setProperty('--base',css(mix(col,[0,0,0],.15)));
+    glow.style.setProperty('--a',css(mix(col,[255,255,255],.45)));
+    glow.style.setProperty('--b',css(col));
+    glow.style.setProperty('--c',css(mix(col,nb,.6)));
+    glow.style.transform=`translateY(${y}px) scale(1)`;
+  }
+  const sp=Spring(0,render,{k:230,c:17});
+  function paint(i){fe.forEach((d,k)=>d.classList.toggle('on',k===i));
+    le.forEach((l,k)=>{l.classList.toggle('on',k===i);$('span',l).textContent=k===i?'활성화 항목':'비활성화 항목'})}
+  function select(i){if(i===cur)return;const first=cur<0;cur=i;paint(i);if(!first)buzz(6)}
+  const yOf=e=>clamp(e.clientY-root.getBoundingClientRect().top-30,Y0,Y1);
+  const near=y=>Math.round((y-Y0)/STEP);
+  let drag=false;
+  root.addEventListener('pointerdown',e=>{drag=true;root.setPointerCapture(e.pointerId);const y=yOf(e);select(near(y));sp.to(y,{k:420,c:36})});
+  root.addEventListener('pointermove',e=>{if(!drag)return;const y=yOf(e);select(near(y));sp.to(y,{k:420,c:36})});
+  const up=()=>{if(!drag)return;drag=false;sp.to(Y0+cur*STEP,{k:230,c:15})};
+  root.addEventListener('pointerup',up);root.addEventListener('pointercancel',up);
+  cur=1;paint(1);sp.set(Y0+STEP);
+})();
+
+/* ===== 화면 전환 ===== */
+const screens=[...document.querySelectorAll('.screen')];let si=0;
+$('#next').onclick=()=>{
+  const a=screens[si];a.classList.remove('active');a.classList.add('out');
+  si=(si+1)%screens.length;const b=screens[si];b.classList.remove('out');
+  requestAnimationFrame(()=>b.classList.add('active'));
+  setTimeout(()=>screens.forEach(s=>{if(s!==b)s.classList.remove('out')}),650);buzz(10);
+};
+</script>
+</body>
+</html>

@@ -169,13 +169,72 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
 .login button{height:64px;margin-top:16px;border:2px solid #fff;border-radius:32px;font-size:18px;font-weight:700}
 .login button:active{background:rgba(255,255,255,.12)}
 #lg-err{margin-top:20px;font-size:13px;color:#ffb4b4;min-height:20px;line-height:1.5}
+
+/* ── 홈 / 통계 / 하단 탭 ── */
+.app.flow .tv,.app.flow .tabs{display:none}
+.app.home #pages,.app.home #next,.app.home #back{visibility:hidden;pointer-events:none}
+.tv{position:absolute;left:0;right:0;top:0;bottom:84px;padding:94px 21px 32px;overflow-y:auto;overflow-x:hidden;display:none;scrollbar-width:none}
+.tv::-webkit-scrollbar{display:none}
+.tv.on{display:flex;flex-direction:column}
+.tv>*{flex:none}
+.tv h1{position:static;width:auto;margin-bottom:8px}
+.tv .date{font-size:14px;font-weight:600;color:#cfd6ee;margin:0 0 36px 2px}
+.card{border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:20px 20px 18px;margin-bottom:20px;background:rgba(255,255,255,.04)}
+.ct{font-size:14px;font-weight:700;color:#cfd6ee;margin-bottom:16px}
+.ct small{font-size:12px;font-weight:600;color:var(--sub);margin-left:6px}
+.bnum{font-size:34px;font-weight:800;letter-spacing:-.5px}
+.card .sub{font-size:13px;font-weight:600;color:#bcd2ff;margin-top:10px;line-height:1.7}
+.big{margin-top:auto;height:128px;border:2px solid #fff;border-radius:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  transition:transform .3s var(--spring),background .2s}
+.big:active{transform:scale(.97);background:rgba(255,255,255,.12)}
+.big b{font-size:26px;font-weight:800;letter-spacing:-.3px}
+.big small{font-size:13px;font-weight:600;color:#cfd6ee}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:84px;display:flex;z-index:6;border-top:1px solid rgba(255,255,255,.18);
+  background:rgba(15,15,25,.6);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding-bottom:12px;color:var(--sub);font-size:12px;font-weight:700;
+  transition:color .25s}
+.tab.on{color:#fff}
+.tab:active svg{transform:scale(.88)}
+.tab svg{transition:transform .25s var(--spring)}
+.chips{display:flex;gap:10px;margin:0 0 24px}
+.chips button{height:38px;padding:0 20px;border:1.5px solid var(--line);border-radius:19px;font-size:14px;font-weight:700;color:var(--sub);transition:all .25s}
+.chips button.on{border-color:#fff;color:#fff}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.stat{border:1px solid rgba(255,255,255,.22);border-radius:18px;padding:18px;background:rgba(255,255,255,.04)}
+.stat span{font-size:12px;font-weight:600;color:#cfd6ee}
+.stat b{display:block;font-size:24px;font-weight:800;margin-top:8px;letter-spacing:-.3px}
+.bars{position:relative;height:190px;display:flex;gap:6px}
+.bar{flex:1;height:100%;position:relative;min-width:0}
+.bar i{position:absolute;bottom:22px;left:12%;right:12%;height:calc((100% - 46px)*var(--r));min-height:2px;border-radius:5px 5px 2px 2px;background:#6fb4ff}
+.bar .bv{position:absolute;left:-4px;right:-4px;text-align:center;bottom:calc(22px + (100% - 46px)*var(--r) + 4px);font-size:11px;font-weight:700;color:#e6eaff}
+.bar .bl{position:absolute;left:-6px;right:-6px;bottom:0;text-align:center;font-size:10px;font-weight:600;color:var(--sub);white-space:nowrap}
+.guide{position:absolute;left:0;right:0;bottom:calc(22px + (100% - 46px)*var(--g));border-top:1px dashed rgba(255,255,255,.3);pointer-events:none}
+.guide span{position:absolute;right:0;top:-16px;font-size:10px;font-weight:700;color:var(--sub)}
+.empty{font-size:13px;font-weight:600;color:var(--sub);text-align:center;padding:48px 0}
+.mrow{display:flex;align-items:center;gap:12px;margin:18px 0;font-size:13px;font-weight:600}
+.mrow:last-child{margin-bottom:2px}
+.mrow>span{width:64px;color:#cfd6ee}
+.mrow .tr{flex:1;height:10px;border-radius:5px;background:rgba(255,255,255,.12);overflow:hidden}
+.mrow .tr i{display:block;height:100%;border-radius:5px;background:#6fb4ff;transition:width .6s var(--soft)}
+.mrow em{width:74px;text-align:right;font-style:normal;font-size:12px;color:#e6eaff}
 </style>
 </head>
 <body>
-<main class="app" id="app">
+<main class="app home" id="app">
   <button class="back hide" id="back" type="button" aria-label="이전">‹</button>
   <div id="pages"></div>
   <button class="next" id="next" type="button">다음</button>
+  <section class="tv on" id="tv-home">
+    <h1>수면 기록</h1>
+    <p class="date" id="h-date"></p>
+    <div class="card" id="h-card"></div>
+    <div class="card"><div class="ct">최근 7일 수면 시간</div><div id="h-chart"></div></div>
+    <button class="big" id="h-start" type="button"><b id="h-big"></b><small id="h-sub"></small></button>
+  </section>
+  <nav class="tabs" id="tabs">
+    <button class="tab on" type="button" data-t="home"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>홈</button>
+    <button class="tab" type="button" data-t="stats"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>통계</button>
+  </nav>
   <div class="toast" id="toast"></div>
   <form class="login" id="login" autocomplete="on">
     <h1 style="position:static;font-size:30px;margin-bottom:10px">밝은 별.</h1>
@@ -192,6 +251,7 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
 const SUPABASE_URL='https://rznkytirleepgferwtee.supabase.co';
 const SUPABASE_KEY='sb_publishable_En3CwvmXpDV1nROo9tD7aw_1xiwDJ9i';
 const SB_TABLE='sleep_records';
+try{localStorage.setItem('sleep.cfg',JSON.stringify({url:SUPABASE_URL,key:SUPABASE_KEY,table:SB_TABLE,home:location.pathname.split('/').pop()||'./'}))}catch(e){}
 </script>
 <script>
 const buzz=(n=8)=>navigator.vibrate&&navigator.vibrate(n);
@@ -201,6 +261,8 @@ const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
 const mod=(a,n)=>((a%n)+n)%n;
 const pad2=n=>String(n).padStart(2,'0');
+const LAST=(()=>{try{return JSON.parse(localStorage.getItem('sleep.last'))||{}}catch(e){return {}}})();
+const lastIdx=(k,max,d)=>Number.isInteger(LAST[k])&&LAST[k]>=0&&LAST[k]<max?LAST[k]:d;
 
 /* ── 스프링 엔진 ── */
 function Spring(x0,onUpdate,{k=200,c=17}={}){
@@ -459,7 +521,7 @@ const SLEEPLAT=['짧음','중간','김'];
 {
   const a=mkQ('취침시각','어제 몇 시에 자리에 누우셨나요?');P.bedTime=TimePicker(a.body,{ap:'PM',hour:11});
   const b=mkQ('소요시간','잠드는 데 얼마나 오래 걸리셨나요?');P.lat1=Choice(b.body,{labels:SLEEPLAT,track:true,index:1,captions:LAT});
-  const c=mkQ('취침 장소','어디서 주무셨나요?');P.place=Choice(c.body,{labels:['집','기숙사','기타'],index:0});
+  const c=mkQ('취침 장소','어디서 주무셨나요?');P.place=Choice(c.body,{labels:['집','기숙사','기타'],index:lastIdx('place',3,0)});
   pages[1]=mkPage('취침 기록',{req:[a.q,b.q],opt:[c.q]});
 }
 /* ───── 2. 어제 밤은 어떠셨나요? ───── */
@@ -530,8 +592,8 @@ const SLEEPLAT=['짧음','중간','김'];
 {
   const wd=new Date().getDay();
   const a=mkQ('오늘은?',null);
-  P.today=Badges(a.body,{items:['학기 중','주말','공휴일','학교 행사','방학','기타'],rows:2,def:[(wd===0||wd===6)?1:0]});
-  const b=mkQ('시험',null);P.exam=Choice(b.body,{labels:['여유','임박','시험'],index:0,captions:['여유','시험 임박','시험']});
+  P.today=Badges(a.body,{items:['학기 중','주말','공휴일','학교 행사','방학','기타'],rows:2,def:(Array.isArray(LAST.today)&&LAST.today.length?LAST.today.filter(i=>Number.isInteger(i)&&i>=0&&i<6):[(wd===0||wd===6)?1:0])});
+  const b=mkQ('시험',null);P.exam=Choice(b.body,{labels:['여유','임박','시험'],index:lastIdx('exam',3,0),captions:['여유','시험 임박','시험']});
   const c=mkQ('일정 강도','오늘 일정은 어땠나요?');
   P.load=Choice(c.body,{labels:['1','2','3','4','5'],track:true,index:1,captions:['1 · 여유로운 날','2 · 평범한 날','3 · 일정이 있는 날','4 · 바쁜 날','5 · 아주 긴 하루']});
   const d=mkQ('기타',null);const ta=el('textarea','ta');ta.placeholder='특이사항이 있다면 적어 주세요';d.body.append(ta);P.note=ta;
@@ -601,7 +663,7 @@ loginEl.addEventListener('submit',async ev=>{
   ev.preventDefault();const err=$('#lg-err'),btn=$('#lg-btn');err.textContent='';btn.disabled=true;
   try{
     const j=await authCall('password',{email:$('#lg-email').value.trim(),password:$('#lg-pw').value});
-    setAuth(j);$('#lg-pw').value='';loginEl.classList.remove('on');flushOutbox();
+    setAuth(j);$('#lg-pw').value='';loginEl.classList.remove('on');flushOutbox().then(()=>refreshAll());
   }catch(e){err.textContent='로그인에 실패했어요. 이메일과 비밀번호를 확인해 주세요.'}
   btn.disabled=false;
 });
@@ -649,7 +711,7 @@ function showEl(node,dir){
 }
 function render(dir=1){
   showEl(pages[seq[si]].pg,dir);
-  backBtn.classList.toggle('hide',si===0);
+  backBtn.classList.remove('hide');
   nextBtn.textContent=si===seq.length-1?'완료':'다음';
 }
 let toastT=0;
@@ -665,10 +727,15 @@ nextBtn.onclick=()=>{
   if(si===seq.length-1){finish();return}
   si++;render(1);
 };
-backBtn.onclick=()=>{if(si>0){buzz(6);si--;render(-1)}};
+backBtn.onclick=()=>{buzz(6);if(si>0){si--;render(-1)}else goHome()};
 
 async function finish(){
   const rec=buildRecord(),sum=sleepSummary(rec);
+  { // 다음 기록의 기본값으로 쓸 마지막 입력값
+    const l=LS.get('sleep.last',{});
+    if(!pending)l.place=P.place.value;
+    l.today=P.today.value;l.exam=P.exam.value;LS.set('sleep.last',l);
+  }
   const all=LS.get('sleep.records',[]);all.push(rec);LS.set('sleep.records',all);
   const ob=LS.get('sleep.outbox',[]);ob.push(rec);LS.set('sleep.outbox',ob);
   if(P.sleepNow)LS.set('sleep.pending',{bed:new Date().toISOString()});else LS.del('sleep.pending');
@@ -689,7 +756,82 @@ function fitAll(){
     while(n.scrollWidth>386&&s>16){s--;n.style.fontSize=s+'px'}
   });
 }
-render(1);fitAll();flushOutbox();
+
+/* ===== 홈 / 통계 ===== */
+const appEl=$('#app'),DOW='일월화수목금토';
+let RECS=[],tabNow='home';
+const clk=d=>pad2(d.getHours())+':'+pad2(d.getMinutes());
+const dur=m=>`${Math.floor(m/60)}시간 ${m%60}분`;
+function collect(remote){
+  const m=new Map();[...remote,...LS.get('sleep.records',[])].forEach(r=>{if(r&&r.saved)m.set(r.saved,r)});
+  return [...m.values()];
+}
+async function loadRemote(){
+  let remote=LS.get('sleep.cache',[]);
+  if(sbReady()){
+    try{
+      const tok=await getToken();
+      if(tok){
+        const r=await fetch(`${SUPABASE_URL}/rest/v1/${SB_TABLE}?select=data&order=saved_at.desc&limit=500`,{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+tok}});
+        if(r.ok){remote=(await r.json()).map(x=>x.data).filter(Boolean);LS.set('sleep.cache',remote)}
+      }
+    }catch(e){console.warn('기록 불러오기 실패',e)}
+  }
+  return collect(remote);
+}
+function analyze(r){
+  const w=r.finalWake||r.naturalWake;if(!w||!r.bedTime)return null;
+  const bed=new Date(r.bedTime),[h,mi]=w.split(':').map(Number);if(isNaN(h))return null;
+  const wk=new Date(bed);wk.setHours(h,isNaN(mi)?0:mi,0,0);if(wk<=bed)wk.setDate(wk.getDate()+1);
+  const min=Math.round((wk-bed)/60000);if(min<=0||min>=24*60)return null;
+  return{bed,wake:wk,min,r};
+}
+const analyzed=()=>RECS.map(analyze).filter(Boolean).sort((a,b)=>a.wake-b.wake);
+function inRange(A,n){const lim=new Date();lim.setHours(0,0,0,0);lim.setDate(lim.getDate()-(n-1));return A.filter(a=>a.wake>=lim)}
+function barChart(host,arr,{show=true,every=1}={}){
+  host.innerHTML='';
+  if(!arr.length){host.innerHTML='<div class="empty">기록이 쌓이면 여기에 표시돼요</div>';return}
+  const max=Math.max(10*60,...arr.map(a=>a.min));
+  const wrap=el('div','bars');wrap.style.setProperty('--g',(8*60/max).toFixed(3));
+  wrap.append(el('div','guide','<span>8시간</span>'));
+  arr.forEach((a,i)=>{
+    const c=el('div','bar');c.style.setProperty('--r',(a.min/max).toFixed(3));
+    c.innerHTML=`<span class="bv">${show?(a.min/60).toFixed(1):''}</span><i></i><span class="bl">${i%every===0?(a.wake.getMonth()+1)+'/'+a.wake.getDate():''}</span>`;
+    wrap.append(c);
+  });
+  host.append(wrap);
+}
+function renderHome(){
+  const now=new Date(),A=analyzed(),last=A[A.length-1],card=$('#h-card');
+  $('#h-date').textContent=`${now.getMonth()+1}월 ${now.getDate()}일 ${DOW[now.getDay()]}요일`;
+  if(pending){
+    card.innerHTML=`<div class="ct">현재 상태</div><div class="bnum">취침 중</div><div class="sub">${clk(new Date(pending.bed))}에 취침을 기록했어요.<br>일어나면 아래 버튼으로 이어서 기록해 주세요.</div>`;
+  }else if(last){
+    card.innerHTML=`<div class="ct">최근 수면 · ${last.wake.getMonth()+1}/${last.wake.getDate()}</div><div class="bnum">${dur(last.min)}</div><div class="sub">${clk(last.bed)} 취침 · ${clk(last.wake)} 기상</div>`;
+  }else{
+    card.innerHTML=`<div class="ct">최근 수면</div><div class="bnum">기록 없음</div><div class="sub">아래 버튼으로 첫 기록을 시작해 보세요.</div>`;
+  }
+  barChart($('#h-chart'),inRange(A,7),{show:true,every:1});
+  $('#h-big').textContent=pending?'기상 기록하기':'수면 기록 시작';
+  $('#h-sub').textContent=pending?'취침 후 이어서 기록해요':'취침 기록부터 시작해요';
+}
+function showTab(t){
+  tabNow=t;buzz(6);
+  if(t==='stats'){location.href='stats.html';return}
+  $('#tv-home').classList.add('on');
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
+function setMode(m){appEl.classList.toggle('home',m==='home');appEl.classList.toggle('flow',m==='flow')}
+function startFlow(){buzz(12);si=0;render(1);setMode('flow')}
+function goHome(){setMode('home');showTab(tabNow);refreshAll()}
+$('#h-start').onclick=startFlow;
+function refreshAll(){
+  RECS=collect(LS.get('sleep.cache',[]));renderHome();
+  loadRemote().then(r=>{RECS=r;renderHome()});
+}
+if(startPage>=1&&startPage<=8)setMode('flow');
+render(1);fitAll();flushOutbox();refreshAll();
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitAll);
 </script>
 </body>

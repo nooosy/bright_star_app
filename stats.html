@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#161520">
+<title>밝은 별.</title>
+<style>
+:root{--bg-top:#161520;--bg-bottom:#3271A6;--line:#7e7e7e;--sub:#7e7e7e;--spring:cubic-bezier(.34,1.56,.64,1);--soft:cubic-bezier(.22,1,.36,1);--hi:#ffb347;--c1:#6fb4ff;--c2:#b78cff}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#000;overscroll-behavior:none}
+body{display:flex;justify-content:center;color:#fff;font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.app{position:relative;width:428px;height:926px;max-height:100dvh;overflow:hidden;background:linear-gradient(180deg,var(--bg-top) 0%,var(--bg-top) 40%,var(--bg-bottom) 100%)}
+.view{position:absolute;inset:0 0 84px 0;padding:94px 21px 40px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.view::-webkit-scrollbar{display:none}
+h1{font-size:32px;line-height:1.2;font-weight:800;letter-spacing:-.5px;margin-bottom:8px}
+.date{font-size:14px;font-weight:600;color:#cfd6ee;margin:0 0 28px 2px}
+.chips{display:flex;gap:10px;margin:0 0 28px}
+.chips button{height:38px;padding:0 20px;border:1.5px solid var(--line);border-radius:19px;font-size:14px;font-weight:700;color:var(--sub);transition:all .25s}
+.chips button.on{border-color:#fff;color:#fff}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px}
+.stat{border:1px solid rgba(255,255,255,.22);border-radius:18px;padding:18px;background:rgba(255,255,255,.04)}
+.stat span{font-size:12px;font-weight:600;color:#cfd6ee}
+.stat b{display:block;font-size:24px;font-weight:800;margin-top:8px;letter-spacing:-.3px}
+.card{border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:20px 16px 18px;margin-bottom:28px;background:rgba(255,255,255,.04)}
+.ct{font-size:15px;font-weight:700;color:#fff;margin:0 4px 6px}
+.cs{font-size:12px;font-weight:600;color:var(--sub);margin:0 4px 20px;line-height:1.6}
+.empty{font-size:13px;font-weight:600;color:var(--sub);text-align:center;padding:44px 0}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:inherit;fill:#9aa3c0;font-size:10px;font-weight:600}
+svg .v{fill:#e6eaff;font-weight:700}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:14px 4px 0;font-size:12px;font-weight:600;color:#cfd6ee}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pane .sel{position:relative;margin-bottom:12px}
+.pane select{width:100%;height:40px;appearance:none;-webkit-appearance:none;border:1.5px solid #fff;border-radius:12px;background:rgba(255,255,255,.05);
+  color:#fff;font:inherit;font-size:13px;font-weight:700;padding:0 28px 0 12px;outline:0}
+.pane select option{color:#000}
+.pane .sel::after{content:'';position:absolute;right:12px;top:15px;width:7px;height:7px;border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg);pointer-events:none}
+.pane .n{font-size:12px;font-weight:600;color:var(--sub);text-align:center;margin-top:6px}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:84px;display:flex;z-index:6;border-top:1px solid rgba(255,255,255,.18);
+  background:rgba(15,15,25,.6);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding-bottom:12px;color:var(--sub);font-size:12px;font-weight:700;text-decoration:none}
+.tab.on{color:#fff}
+.tab:active svg{transform:scale(.88)}
+.tab svg{width:26px;height:26px;transition:transform .25s var(--spring)}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="view" id="view">
+    <h1>통계</h1>
+    <p class="date" id="date">불러오는 중…</p>
+    <div class="chips" id="chips"><button type="button" data-r="7" class="on">7일</button><button type="button" data-r="30">30일</button><button type="button" data-r="90">90일</button><button type="button" data-r="0">전체</button></div>
+    <div id="sections"></div>
+  </div>
+  <nav class="tabs">
+    <a class="tab" id="tab-home" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>홈</a>
+    <a class="tab on" href="stats.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>통계</a>
+  </nav>
+</main>
+
+<script>
+/* 설정은 앱(홈)을 한 번 열면 자동으로 공유돼요. 따로 쓰고 싶으면 아래를 채우세요. */
+const CFG_FALLBACK={url:'',key:'',table:'sleep_records'};
+
+const $=(s,r=document)=>r.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+const pad2=n=>String(n).padStart(2,'0');
+const LS={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const CFG=Object.assign({},CFG_FALLBACK,LS.get('sleep.cfg',{}));
+const ready=!!CFG.url&&!!CFG.key&&!CFG.url.includes('YOUR-PROJECT');
+const homeHref=(CFG.home&&CFG.home!=='./')?CFG.home:(CFG.home==='./'?'./':'index.html');
+$('#tab-home').href=homeHref;
+const MOOD=['개운함','좋음','보통','피곤함','매우 피곤함'];
+const SLOTS=[['wake','기상 직후'],['morning','아침'],['afternoon','오후'],['evening','저녁']];
+const NS='http://www.w3.org/2000/svg';
+const svgEl=(t,a={},txt)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;return e};
+
+/* ───── 데이터 ───── */
+async function token(){
+  const a=LS.get('sleep.auth',null);if(!a)return null;
+  if(a.expires_at-60>Date.now()/1000)return a.access_token;
+  try{
+    const r=await fetch(`${CFG.url}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:{apikey:CFG.key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:a.refresh_token})});
+    if(!r.ok)return null;const j=await r.json();
+    LS.set('sleep.auth',{access_token:j.access_token,refresh_token:j.refresh_token,expires_at:Math.floor(Date.now()/1000)+(j.expires_in||3600)});
+    return j.access_token;
+  }catch(e){return null}
+}
+function collect(remote){
+  const m=new Map();[...remote,...LS.get('sleep.records',[])].forEach(r=>{if(r&&r.saved)m.set(r.saved,r)});return [...m.values()];
+}
+async function load(){
+  let remote=LS.get('sleep.cache',[]);
+  if(ready){
+    try{
+      const t=await token();
+      if(t){
+        const r=await fetch(`${CFG.url}/rest/v1/${CFG.table||'sleep_records'}?select=data&order=saved_at.desc&limit=1000`,{headers:{apikey:CFG.key,Authorization:'Bearer '+t}});
+        if(r.ok){remote=(await r.json()).map(x=>x.data).filter(Boolean);LS.set('sleep.cache',remote)}
+      }else if(!LS.get('sleep.auth',null)){location.replace(homeHref);return null}
+    }catch(e){console.warn('불러오기 실패',e)}
+  }
+  return collect(remote);
+}
+function analyze(r){
+  const w=r.finalWake||r.naturalWake;if(!w||!r.bedTime)return null;
+  const bed=new Date(r.bedTime),[h,mi]=w.split(':').map(Number);if(isNaN(h))return null;
+  const wk=new Date(bed);wk.setHours(h,isNaN(mi)?0:mi,0,0);if(wk<=bed)wk.setDate(wk.getDate()+1);
+  const min=Math.round((wk-bed)/60000);if(min<=0||min>=24*60)return null;
+  return{bed,wake:wk,min,r};
+}
+let ALL=[],range=7;
+const rows=()=>{
+  let A=ALL.map(analyze).filter(Boolean).sort((a,b)=>a.wake-b.wake);
+  if(range){const lim=new Date();lim.setHours(0,0,0,0);lim.setDate(lim.getDate()-(range-1));A=A.filter(a=>a.wake>=lim)}
+  return A;
+};
+const fmtMin=m=>`${pad2(Math.floor(m/60)%24)}:${pad2(Math.round(m)%60)}`;
+const dur=m=>`${Math.floor(m/60)}시간 ${Math.round(m%60)}분`;
+const avg=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
+const dlabel=d=>(d.getMonth()+1)+'/'+d.getDate();
+
+/* ───── 차트 부품 ───── */
+const W=354;
+/* 시간 추세: pts=[{x:Date,y:분,hi:bool}] */
+function trendChart(host,pts,{guide,guideLabel,tickStep=60,hiColor='#ffb347',color='#6fb4ff',unit}={}){
+  host.innerHTML='';
+  if(!pts.length){host.innerHTML='<div class="empty">기록이 쌓이면 여기에 표시돼요</div>';return}
+  const H=190,L=40,R=10,T=14,B=26,iw=W-L-R,ih=H-T-B;
+  let lo=Math.min(...pts.map(p=>p.y),guide??1e9),hi=Math.max(...pts.map(p=>p.y),guide??-1e9);
+  lo=Math.floor(lo/tickStep)*tickStep-tickStep/2;hi=Math.ceil(hi/tickStep)*tickStep+tickStep/2;
+  const X=i=>L+(pts.length===1?iw/2:iw*i/(pts.length-1)),Y=v=>T+ih*(v-lo)/(hi-lo);
+  const s=svgEl('svg',{viewBox:`0 0 ${W} ${H}`});
+  for(let v=Math.ceil(lo/tickStep)*tickStep;v<=hi;v+=tickStep){
+    s.append(svgEl('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),stroke:'rgba(255,255,255,.1)'}));
+    s.append(svgEl('text',{x:L-6,y:Y(v)+3,'text-anchor':'end'},fmtMin(v)));
+  }
+  if(guide!=null){
+    s.append(svgEl('line',{x1:L,x2:W-R,y1:Y(guide),y2:Y(guide),stroke:hiColor,'stroke-dasharray':'4 4',opacity:.7}));
+    s.append(svgEl('text',{x:W-R,y:Y(guide)-4,'text-anchor':'end',style:`fill:${hiColor}`},guideLabel||''));
+  }
+  s.append(svgEl('polyline',{points:pts.map((p,i)=>`${X(i)},${Y(p.y)}`).join(' '),fill:'none',stroke:color,'stroke-width':2,'stroke-linejoin':'round',opacity:.55}));
+  const every=Math.max(1,Math.ceil(pts.length/7));
+  pts.forEach((p,i)=>{
+    s.append(svgEl('circle',{cx:X(i),cy:Y(p.y),r:p.hi?5:4,fill:p.hi?hiColor:color}));
+    if(pts.length<=10)s.append(svgEl('text',{x:X(i),y:Y(p.y)-9,'text-anchor':'middle',class:'v'},fmtMin(p.y)));
+    if(i%every===0||i===pts.length-1)s.append(svgEl('text',{x:X(i),y:H-6,'text-anchor':'middle'},dlabel(p.x)));
+  });
+  host.append(s);
+}
+/* 하루 기분 변화: 두 그룹 비교용 한 개 선 그래프. avgs=[4개 평균 or null] */
+function moodChart(host,avgs,color,w=170){
+  host.innerHTML='';
+  const H=200,L=8,R=8,T=14,B=30,iw=w-L-R,ih=H-T-B;
+  const X=i=>L+iw*i/3,Y=v=>T+ih*(v-1)/4;
+  const s=svgEl('svg',{viewBox:`0 0 ${w} ${H}`});
+  for(let v=1;v<=5;v++)s.append(svgEl('line',{x1:L,x2:w-R,y1:Y(v),y2:Y(v),stroke:'rgba(255,255,255,.1)'}));
+  const ok=avgs.map((v,i)=>v==null?null:[X(i),Y(v)]);
+  const seg=ok.filter(Boolean);
+  if(seg.length>1)s.append(svgEl('polyline',{points:seg.map(p=>p.join(',')).join(' '),fill:'none',stroke:color,'stroke-width':2.5,'stroke-linejoin':'round'}));
+  avgs.forEach((v,i)=>{
+    if(v!=null){s.append(svgEl('circle',{cx:X(i),cy:Y(v),r:4.5,fill:color}));s.append(svgEl('text',{x:X(i),y:Y(v)-9,'text-anchor':'middle',class:'v'},v.toFixed(1)))}
+    s.append(svgEl('text',{x:X(i),y:H-8,'text-anchor':'middle'},SLOTS[i][1].replace(' 직후','')));
+  });
+  host.append(s);
+}
+const moodAxis=`<div class="cs" style="margin-bottom:14px">위쪽일수록 개운하고(1), 아래쪽일수록 피곤해요(5).</div>`;
+function moodAvgs(A){return SLOTS.map(([k])=>avg(A.map(a=>a.r.fatigue&&a.r.fatigue[k]).filter(v=>v>0)))}
+
+/* 두 그룹 비교 카드. groups=[{label, test(a)}] */
+function compareCard({title,sub,groups,defaults}){
+  const c=el('div','card');
+  c.innerHTML=`<div class="ct">${title}</div><div class="cs">${sub}</div>${moodAxis}<div class="cmp"></div>`;
+  const box=$('.cmp',c),colors=['#6fb4ff','#b78cff'],panes=[];
+  const draw=()=>{
+    const A=rows();
+    panes.forEach(p=>{
+      const g=groups[p.sel.value],sub=A.filter(g.test);
+      if(sub.length)moodChart(p.chart,moodAvgs(sub),p.color);
+      else p.chart.innerHTML='<div class="empty" style="padding:70px 0">기록 없음</div>';
+      p.n.textContent=`${sub.length}회 기록`+(sub.length?` · 평균 ${dur(avg(sub.map(a=>a.min)))}`:'');
+    });
+  };
+  [0,1].forEach(i=>{
+    const pane=el('div','pane');
+    const sw=el('div','sel'),sel=el('select');
+    groups.forEach((g,gi)=>sel.append(new Option(g.label,gi)));
+    sel.value=defaults[i];sw.append(sel);
+    const chart=el('div'),n=el('div','n');
+    pane.append(sw,chart,n);box.append(pane);
+    sel.onchange=draw;panes.push({sel,chart,n,color:colors[i]});
+  });
+  c._draw=draw;return c;
+}
+
+/* ───── 섹션 목록 (나중에 여기에 추가하면 돼요) ───── */
+const sleepBin=(lo,hi)=>a=>a.min>=lo&&a.min<hi;
+const SECTIONS=[
+  {id:'summary',render(A){
+    const n=A.length,bedM=avg(A.map(a=>{let m=a.bed.getHours()*60+a.bed.getMinutes();if(m<12*60)m+=1440;return m}));
+    const wakeM=avg(A.map(a=>a.wake.getHours()*60+a.wake.getMinutes()));
+    const cell=(l,v)=>`<div class="stat"><span>${l}</span><b>${v}</b></div>`;
+    const d=el('div','sgrid');
+    d.innerHTML=cell('평균 수면 시간',n?dur(avg(A.map(a=>a.min))):'-')+cell('기록 횟수',n+'회')+cell('평균 취침 시각',bedM==null?'-':fmtMin(bedM))+cell('평균 기상 시각',wakeM==null?'-':fmtMin(wakeM));
+    return d}},
+  {id:'bed',render(A){
+    const c=el('div','card');c.innerHTML='<div class="ct">취침 시각 추세</div><div class="cs">자정 이후는 24시, 25시…로 이어서 표시해요.</div><div class="h"></div>';
+    trendChart($('.h',c),A.map(a=>{let m=a.bed.getHours()*60+a.bed.getMinutes();if(m<12*60)m+=1440;return{x:a.wake,y:m}}),{});
+    return c}},
+  {id:'wake',render(A){
+    const c=el('div','card');c.innerHTML='<div class="ct">기상 시각 추세</div><div class="cs">7시 이전에 일어난 날은 주황색으로 표시됩니다.</div><div class="h"></div><div class="legend"><span><i style="background:var(--c1)"></i>7시 이후</span><span><i style="background:var(--hi)"></i>7시 이전</span></div>';
+    trendChart($('.h',c),A.map(a=>{const m=a.wake.getHours()*60+a.wake.getMinutes();return{x:a.wake,y:m,hi:m<7*60}}),{guide:7*60,guideLabel:'07:00'});
+    return c}},
+  {id:'mood',render(A){
+    const c=el('div','card');c.innerHTML=`<div class="ct">평균적인 하루의 기분 변화</div><div class="cs">기상 직후부터 저녁까지 평균 피로도예요.</div>${moodAxis}<div class="h"></div>`;
+    if(!A.some(a=>a.r.fatigue))$('.h',c).innerHTML='<div class="empty">기록이 쌓이면 여기에 표시돼요</div>';
+    else moodChart($('.h',c),moodAvgs(A),'#6fb4ff',W);
+    return c}},
+  {id:'bySleep',card:()=>compareCard({
+    title:'수면 시간에 따른 하루의 기분 변화',
+    sub:'좌우를 비교하세요.',
+    groups:[
+      {label:'전체',test:()=>true},
+      {label:'5시간 미만',test:sleepBin(0,300)},
+      {label:'5시간 이상',test:sleepBin(300,1e9)},
+      {label:'4시간 이하',test:sleepBin(0,270)},
+      {label:'5시간',test:sleepBin(270,330)},
+      {label:'6시간',test:sleepBin(330,390)},
+      {label:'7시간',test:sleepBin(390,450)},
+      {label:'8시간',test:sleepBin(450,510)},
+      {label:'8시간 초과',test:sleepBin(510,1e9)}],
+    defaults:[1,2]})},
+  {id:'byLoad',card:()=>compareCard({
+    title:'일정에 따른 하루의 기분 변화',
+    sub:'하루 정리에서 입력한 일정 강도(1~5)로 묶어서 비교해요.',
+    groups:[
+      {label:'전체',test:()=>true},
+      {label:'1~2 (여유·평범)',test:a=>a.r.day&&a.r.day.load<=2},
+      {label:'3 (일정 있음)',test:a=>a.r.day&&a.r.day.load===3},
+      {label:'4~5 (바쁨)',test:a=>a.r.day&&a.r.day.load>=4},
+      {label:'1 · 여유로운 날',test:a=>a.r.day&&a.r.day.load===1},
+      {label:'2 · 평범한 날',test:a=>a.r.day&&a.r.day.load===2},
+      {label:'3 · 일정이 있는 날',test:a=>a.r.day&&a.r.day.load===3},
+      {label:'4 · 바쁜 날',test:a=>a.r.day&&a.r.day.load===4},
+      {label:'5 · 아주 긴 하루',test:a=>a.r.day&&a.r.day.load===5}],
+    defaults:[1,3]})}
+];
+/* 드롭다운 값은 다시 그려도 유지되도록 카드를 한 번만 만든다 */
+const cards={};
+function render(){
+  const A=rows(),host=$('#sections');
+  $('#date').textContent=`${range?`최근 ${range}일`:'전체 기간'} · 기록 ${A.length}회`;
+  if(!host.children.length){
+    SECTIONS.forEach(sec=>{
+      if(sec.card){const c=sec.card();cards[sec.id]=c;host.append(c)}
+      else{const w=el('div');w.dataset.id=sec.id;host.append(w)}
+    });
+  }
+  SECTIONS.forEach(sec=>{
+    if(sec.card)cards[sec.id]._draw();
+    else{const w=host.querySelector(`[data-id="${sec.id}"]`);w.innerHTML='';w.append(sec.render(A))}
+  });
+}
+document.querySelectorAll('#chips button').forEach(b=>b.onclick=()=>{
+  range=+b.dataset.r;document.querySelectorAll('#chips button').forEach(x=>x.classList.toggle('on',x===b));render();
+});
+ALL=collect(LS.get('sleep.cache',[]));render();
+load().then(r=>{if(r){ALL=r;render()}});
+</script>
+</body>
+</html>

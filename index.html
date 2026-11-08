@@ -27,9 +27,14 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
 .req{min-height:420px}
 .divider{height:1px;background:var(--line);margin:0 -14px 0 -4px}
 .optlabel{font-size:14px;font-weight:700;color:var(--sub);margin:32px 0 40px 4px}
-.next{position:absolute;left:21px;right:22px;bottom:23px;height:76px;border:2px solid #fff;border-radius:38px;font-size:20px;font-weight:700;
+.next{position:absolute;left:119px;right:22px;bottom:23px;height:76px;border:2px solid #fff;border-radius:38px;font-size:20px;font-weight:700;
   transition:transform .35s var(--spring),background .25s}
 .next:active{transform:scale(.95);background:rgba(255,255,255,.12)}
+.prev{position:absolute;left:21px;bottom:23px;width:88px;height:76px;border:2px solid rgba(255,255,255,.5);border-radius:38px;font-size:16px;font-weight:700;color:rgba(255,255,255,.8);
+  transition:transform .35s var(--spring),background .25s,opacity .25s}
+.prev:active{transform:scale(.93);background:rgba(255,255,255,.12)}
+.app.fin .next{left:21px}
+.app.fin #prev,.app.home #prev{visibility:hidden;pointer-events:none}
 .back{position:absolute;left:12px;top:42px;width:44px;height:44px;font-size:34px;line-height:40px;color:rgba(255,255,255,.55);z-index:5;
   transition:opacity .3s,transform .35s var(--spring)}
 .back:active{transform:scale(.8)}
@@ -173,7 +178,7 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
 /* ── 홈 / 통계 / 하단 탭 ── */
 .app.flow .tv,.app.flow .tabs{display:none}
 .app.home #pages,.app.home #next,.app.home #back{visibility:hidden;pointer-events:none}
-.tv{position:absolute;left:0;right:0;top:0;bottom:84px;padding:94px 21px 32px;overflow-y:auto;overflow-x:hidden;display:none;scrollbar-width:none}
+.tv{position:absolute;left:0;right:0;top:0;bottom:84px;padding:94px 21px 150px;overflow-y:auto;overflow-x:hidden;display:none;scrollbar-width:none}
 .tv::-webkit-scrollbar{display:none}
 .tv.on{display:flex;flex-direction:column}
 .tv>*{flex:none}
@@ -184,8 +189,36 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
 .ct small{font-size:12px;font-weight:600;color:var(--sub);margin-left:6px}
 .bnum{font-size:34px;font-weight:800;letter-spacing:-.5px}
 .card .sub{font-size:13px;font-weight:600;color:#bcd2ff;margin-top:10px;line-height:1.7}
-.big{margin-top:auto;height:128px;border:2px solid #fff;border-radius:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+.big{position:absolute;left:21px;right:21px;bottom:98px;height:100px;z-index:5;border:2px solid #fff;border-radius:50px;background:rgba(14,18,32,.82);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
   transition:transform .3s var(--spring),background .2s}
+.app.flow .big{display:none}
+#h-ct small{color:#bcd2ff}
+.lw{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14);font-size:13px;font-weight:600;color:#cfd6ee}
+.lw b{color:#fff;font-weight:800;margin-left:4px}
+.cal-h{display:flex;align-items:center;justify-content:space-between;margin:-4px 0 12px}
+.cal-h b{font-size:16px;font-weight:800}
+.cal-h button{width:40px;height:40px;border-radius:20px;font-size:24px;line-height:36px;color:#cfd6ee}
+.cal-h button:active{background:rgba(255,255,255,.12)}
+.cal-h button:disabled{opacity:.25;pointer-events:none}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);row-gap:6px}
+.cal-w{text-align:center;font-size:11px;font-weight:700;color:var(--sub);padding-bottom:6px}
+.cd{position:relative;height:46px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
+.cd .c{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1.5px solid transparent;transition:border-color .2s,transform .25s var(--spring)}
+.cd.has .c{background:rgba(86,160,255,var(--a))}
+.cd.miss .c{border:1.5px dashed rgba(255,255,255,.35)}
+.cd.sel .c{border:2px solid #fff;transform:scale(1.08)}
+.cd.today::after{content:'';position:absolute;bottom:0;width:4px;height:4px;border-radius:50%;background:#fff}
+.cd.fut{color:#4b5266;pointer-events:none}
+.cd:active .c{transform:scale(.92)}
+.cal-l{display:flex;align-items:center;gap:8px;margin-top:16px;font-size:11px;font-weight:600;color:var(--sub)}
+.cal-l i{width:70px;height:10px;border-radius:5px;background:linear-gradient(90deg,rgba(86,160,255,.2),rgba(86,160,255,1))}
+.cal-l em{margin-left:auto;font-style:normal;display:flex;align-items:center;gap:6px}
+.cal-l u{display:inline-block;width:12px;height:12px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.4)}
+#cal-detail{scroll-margin-bottom:130px}
+.drow{display:flex;gap:12px;padding:11px 0;border-top:1px solid rgba(255,255,255,.1);font-size:13px}
+.drow span{width:84px;flex:none;color:var(--sub);font-weight:600}
+.drow b{flex:1;font-weight:600;color:#e6eaff;line-height:1.5;word-break:keep-all}
 .big:active{transform:scale(.97);background:rgba(255,255,255,.12)}
 .big b{font-size:26px;font-weight:800;letter-spacing:-.3px}
 .big small{font-size:13px;font-weight:600;color:#cfd6ee}
@@ -223,14 +256,17 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
 <main class="app home" id="app">
   <button class="back hide" id="back" type="button" aria-label="이전">‹</button>
   <div id="pages"></div>
+  <button class="prev" id="prev" type="button">이전</button>
   <button class="next" id="next" type="button">다음</button>
   <section class="tv on" id="tv-home">
     <h1>수면 기록</h1>
     <p class="date" id="h-date"></p>
     <div class="card" id="h-card"></div>
-    <div class="card"><div class="ct">최근 7일 수면 시간</div><div id="h-chart"></div></div>
-    <button class="big" id="h-start" type="button"><b id="h-big"></b><small id="h-sub"></small></button>
+    <div class="card"><div class="ct" id="h-ct">최근 7일 수면 시간</div><div id="h-chart"></div></div>
+    <div class="card" id="cal"></div>
+    <div class="card" id="cal-detail" style="display:none"></div>
   </section>
+  <button class="big" id="h-start" type="button"><b id="h-big"></b><small id="h-sub"></small></button>
   <nav class="tabs" id="tabs">
     <button class="tab on" type="button" data-t="home"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>홈</button>
     <button class="tab" type="button" data-t="stats"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>통계</button>
@@ -567,7 +603,7 @@ const SLEEPLAT=['짧음','중간','김'];
 /* ───── 6. 카페인 ───── */
 {
   const a=mkQ('오늘 커피를 섭취하셨나요?',null);
-  const b=mkQ('종류','무엇을 마셨나요?');P.cafKind=Badges(b.body,{items:['커피','에너지음료','기타'],rows:1,def:[0]});
+  const b=mkQ('종류','무엇을 마셨나요?');P.cafKind=Badges(b.body,{items:['커피','에너지음료','영양제','기타'],rows:1,def:[0]});
   const c=mkQ('잔 수','몇 잔 마셨나요?');P.cafCups=Count(c.body,{items:Array.from({length:10},(_,i)=>String(i+1)),index:0,unit:'잔'});
   const d=optTime('섭취 시작','처음 섭취를 시작한 시간은 몇 시 경인가요?',{ap:'AM',hour:8,minuteFixed:true});
   const e=optTime('섭취 종료','섭취를 완료한 시간은 몇 시 경인가요?',{ap:'AM',hour:8,minuteFixed:true});
@@ -610,9 +646,10 @@ const LS={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){re
 const qs=new URLSearchParams(location.search);
 if(qs.has('reset')){LS.del('sleep.pending');LS.del('sleep.records');LS.del('sleep.outbox')}
 const pending=LS.get('sleep.pending',null);
+let target=null; // 빠트린 날 기록 시 그 날(기상일)의 0시
 
 function bedISO(t){ // AM 취침은 오늘 새벽, PM 취침은 어제 밤
-  const d=new Date();if(t.ap==='PM')d.setDate(d.getDate()-1);
+  const d=target?new Date(target):new Date();if(t.ap==='PM')d.setDate(d.getDate()-1);
   d.setHours(to24(t),t.minute??0,0,0);return d.toISOString();
 }
 function wakeAfter(bedIso,t){
@@ -621,7 +658,7 @@ function wakeAfter(bedIso,t){
 }
 function buildRecord(){
   const L=['짧음','중간','김'];
-  const bedPath=!pending;
+  const bedPath=!pending||!!target;
   const bed=bedPath?bedISO(P.bedTime.value):pending.bed;
   const rec={saved:new Date().toISOString(),
     bedTime:bed,
@@ -728,25 +765,26 @@ nextBtn.onclick=()=>{
   si++;render(1);
 };
 backBtn.onclick=()=>{buzz(6);if(si>0){si--;render(-1)}else goHome()};
+$('#prev').onclick=()=>backBtn.onclick();
 
 async function finish(){
   const rec=buildRecord(),sum=sleepSummary(rec);
   { // 다음 기록의 기본값으로 쓸 마지막 입력값
     const l=LS.get('sleep.last',{});
-    if(!pending)l.place=P.place.value;
+    if(!pending||target)l.place=P.place.value;
     l.today=P.today.value;l.exam=P.exam.value;LS.set('sleep.last',l);
   }
   const all=LS.get('sleep.records',[]);all.push(rec);LS.set('sleep.records',all);
   const ob=LS.get('sleep.outbox',[]);ob.push(rec);LS.set('sleep.outbox',ob);
-  if(P.sleepNow)LS.set('sleep.pending',{bed:new Date().toISOString()});else LS.del('sleep.pending');
+  if(!target){if(P.sleepNow)LS.set('sleep.pending',{bed:new Date().toISOString()});else LS.del('sleep.pending')}
   const bt=new Date(rec.bedTime);
   done.innerHTML=`<h1>기록 완료</h1><p>오늘 하루도 수고하셨어요!<br>안녕히 주무세요</p><div class="sum">${
-    sum?sum+'<br>':''}${P.sleepNow?'취침 시각을 지금으로 기록했어요':'내일은 취침 기록부터 시작해요'}</div>`;
-  finished=true;backBtn.classList.add('hide');nextBtn.textContent='처음으로';
+    sum?sum+'<br>':''}${target?(target.getMonth()+1)+'/'+target.getDate()+' 기록을 저장했어요':(P.sleepNow?'취침 시각을 지금으로 기록했어요':'내일은 취침 기록부터 시작해요')}</div>`;
+  finished=true;$('#app').classList.add('fin');backBtn.classList.add('hide');nextBtn.textContent='처음으로';
   showEl(done,1);console.log('저장된 기록',rec);
   if(!sbReady()){toast('Supabase 설정 전이라 이 기기에만 저장됐어요');return}
   const ok=await flushOutbox();
-  toast(ok?'클라우드에 저장했어요 ☁️':'오프라인이라 기기에 보관했어요. 다음에 자동으로 다시 보낼게요');
+  toast(ok?'클라우드에 저장됨':'오프라인: 기기에 보관 완료.');
 }
 
 /* 제목이 길면 글자 크기를 줄여 한 줄에 맞춤 */
@@ -801,19 +839,92 @@ function barChart(host,arr,{show=true,every=1}={}){
   });
   host.append(wrap);
 }
+const key=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+const day0=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
+const esc=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let selDate=null,calMonth=day0(new Date()),byDay=new Map(),bigTarget=null;calMonth.setDate(1);
 function renderHome(){
   const now=new Date(),A=analyzed(),last=A[A.length-1],card=$('#h-card');
+  byDay=new Map();A.forEach(a=>byDay.set(key(a.wake),a));
   $('#h-date').textContent=`${now.getMonth()+1}월 ${now.getDate()}일 ${DOW[now.getDay()]}요일`;
+  const lw=day0(now);lw.setDate(lw.getDate()-7);const lr=byDay.get(key(lw));
+  const lwHtml=`<div class="lw">지난주 ${DOW[lw.getDay()]}요일(${lw.getMonth()+1}/${lw.getDate()}) 취침<b>${lr?clk(lr.bed):'기록 없음'}</b></div>`;
   if(pending){
-    card.innerHTML=`<div class="ct">현재 상태</div><div class="bnum">취침 중</div><div class="sub">${clk(new Date(pending.bed))}에 취침을 기록했어요.<br>일어나면 아래 버튼으로 이어서 기록해 주세요.</div>`;
+    card.innerHTML=`<div class="ct">현재 상태</div><div class="bnum">취침 중</div><div class="sub">${clk(new Date(pending.bed))}에 취침을 기록했어요.<br>일어나면 아래 버튼으로 이어서 기록해 주세요.</div>${lwHtml}`;
   }else if(last){
-    card.innerHTML=`<div class="ct">최근 수면 · ${last.wake.getMonth()+1}/${last.wake.getDate()}</div><div class="bnum">${dur(last.min)}</div><div class="sub">${clk(last.bed)} 취침 · ${clk(last.wake)} 기상</div>`;
+    card.innerHTML=`<div class="ct">최근 수면 · ${last.wake.getMonth()+1}/${last.wake.getDate()}</div><div class="bnum">${dur(last.min)}</div><div class="sub">${clk(last.bed)} 취침 · ${clk(last.wake)} 기상</div>${lwHtml}`;
   }else{
-    card.innerHTML=`<div class="ct">최근 수면</div><div class="bnum">기록 없음</div><div class="sub">아래 버튼으로 첫 기록을 시작해 보세요.</div>`;
+    card.innerHTML=`<div class="ct">최근 수면</div><div class="bnum">기록 없음</div><div class="sub">아래 버튼으로 첫 기록을 시작해 보세요.</div>${lwHtml}`;
   }
+  const A3=inRange(A,3),s3=A3.reduce((t,a)=>t+a.min,0);
+  $('#h-ct').innerHTML=`최근 7일 수면 시간<small>${A3.length?`최근 3일 합 ${dur(s3)}${A3.length<3?` (${A3.length}일 기록)`:''}`:'최근 3일 기록 없음'}</small>`;
   barChart($('#h-chart'),inRange(A,7),{show:true,every:1});
-  $('#h-big').textContent=pending?'기상 기록하기':'수면 기록 시작';
-  $('#h-sub').textContent=pending?'취침 후 이어서 기록해요':'취침 기록부터 시작해요';
+  renderCal();renderDetail();updateBig();
+}
+function renderCal(){
+  const host=$('#cal'),y=calMonth.getFullYear(),m=calMonth.getMonth(),today=day0(new Date());
+  const ws=[...byDay.values()].map(a=>+day0(a.wake)),first=ws.length?Math.min(...ws):null;
+  const startDow=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();
+  let h=`<div class="ct">수면 달력</div><div class="cal-h"><button type="button" id="cal-p" aria-label="이전 달">‹</button><b>${y}년 ${m+1}월</b><button type="button" id="cal-n" aria-label="다음 달">›</button></div><div class="cal-g">`;
+  [...DOW].forEach(w=>h+=`<div class="cal-w">${w}</div>`);
+  for(let i=0;i<startDow;i++)h+='<div></div>';
+  for(let d=1;d<=dim;d++){
+    const dt=new Date(y,m,d),k=key(dt),a=byDay.get(k),fut=dt>today,isT=+dt===+today;
+    let cls='cd',st='';
+    if(a){const al=.2+.8*clamp((a.min-240)/300,0,1);st=`--a:${al.toFixed(2)};${al>.62?'color:#0b1020':''}`;cls+=' has'}
+    else if(!fut&&!isT&&first!=null&&+dt>first)cls+=' miss';
+    if(fut)cls+=' fut';if(isT)cls+=' today';if(selDate&&k===key(selDate))cls+=' sel';
+    h+=`<button type="button" class="${cls}" data-k="${k}"${fut?' disabled':''}><span class="c" style="${st}">${d}</span></button>`;
+  }
+  h+=`</div><div class="cal-l"><span>4시간↓</span><i></i><span>9시간↑</span><em><u></u>빠트린 날</em></div>`;
+  host.innerHTML=h;
+  const cm=day0(new Date());cm.setDate(1);
+  $('#cal-n').disabled=calMonth>=cm;
+  $('#cal-p').onclick=()=>{calMonth=new Date(y,m-1,1);buzz(6);renderCal()};
+  $('#cal-n').onclick=()=>{calMonth=new Date(y,m+1,1);buzz(6);renderCal()};
+  host.querySelectorAll('.cd').forEach(b=>b.onclick=()=>{
+    const [Y,M,D]=b.dataset.k.split('-').map(Number);
+    selDate=(selDate&&key(selDate)===b.dataset.k)?null:new Date(Y,M-1,D);
+    buzz(8);renderCal();renderDetail();updateBig();
+    if(selDate)$('#cal-detail').scrollIntoView({behavior:'smooth',block:'nearest'});
+  });
+}
+const MOODN=v=>v>=1&&v<=5?MOOD[v-1][0]:'-';
+function renderDetail(){
+  const box=$('#cal-detail');
+  if(!selDate){box.style.display='none';return}
+  box.style.display='';
+  const a=byDay.get(key(selDate)),today=day0(new Date());
+  const title=`${selDate.getMonth()+1}월 ${selDate.getDate()}일 (${DOW[selDate.getDay()]})`;
+  if(!a){
+    const msg=selDate>today?'아직 오지 않은 날이에요.':(+selDate===+today?(pending?'취침은 기록됐어요. 기상 기록을 기다리고 있어요.':'아직 기록이 없어요.'):'이 날은 기록이 없어요.<br>아래 버튼으로 이 날의 기록을 남길 수 있어요.');
+    box.innerHTML=`<div class="ct">${title}</div><div class="sub" style="margin-top:0">${msg}</div>`;return;
+  }
+  const r=a.r,f=r.fatigue||{},dr=r.drowsy||{},cf=r.caffeine,ex=r.exercise||{},dy=r.day||{};
+  const exs=[ex.personal?`개인 운동 ${ex.minutes||0}분`:null,ex.pe?'체육 수업':null].filter(Boolean);
+  const rows=[
+    ['취침 · 기상',`${clk(a.bed)} → ${clk(a.wake)}`],
+    ['잠드는 데',r.latency||'-'],
+    ['취침 장소',r.place||'-'],
+    r.awakenings!=null?['중간에 깬 횟수',r.awakenings+'회']:null,
+    r.naturalWake?['눈이 떠진 시각',r.naturalWake]:null,
+    ['하루 기분',`기상 직후 ${MOODN(f.wake)}<br>아침 ${MOODN(f.morning)}<br>오후 ${MOODN(f.afternoon)}<br>저녁 ${MOODN(f.evening)}`],
+    ['식곤증',dr.level>0?`${['없음','경미','중등','중증'][dr.level]}${dr.time?' ('+dr.time+')':''}`:'없음'],
+    ['카페인',cf?`${esc((cf.kinds||[]).join(', ')||'-')} · ${cf.cups}잔${cf.start?` (${cf.start}~${cf.end||'?'})`:''}`:'섭취 안 함'],
+    ['운동',exs.length?exs.join(', '):'없음'],
+    ['일정',`${esc((dy.type||[]).join(', ')||'-')} · 시험 ${esc(dy.exam||'-')} · 강도 ${dy.load||'-'}/5`],
+    dy.note?['기타',esc(dy.note)]:null
+  ].filter(Boolean);
+  box.innerHTML=`<div class="ct">${title}</div><div class="bnum">${dur(a.min)}</div><div style="height:12px"></div>`+rows.map(([k,v])=>`<div class="drow"><span>${k}</span><b>${v}</b></div>`).join('');
+}
+function updateBig(){
+  const today=day0(new Date());bigTarget=null;
+  if(selDate&&selDate<today&&!byDay.get(key(selDate)))bigTarget=selDate;
+  let t,sb;
+  if(bigTarget){t=`${bigTarget.getMonth()+1}/${bigTarget.getDate()} 기록 시작`;sb='빠트린 날의 기록을 남겨요'}
+  else if(pending){t='기상 기록하기';sb='취침 후 이어서 기록해요'}
+  else{t=`${today.getMonth()+1}/${today.getDate()} 기록 시작`;sb='취침 기록부터 시작해요'}
+  $('#h-big').textContent=t;$('#h-sub').textContent=sb;
 }
 function showTab(t){
   tabNow=t;buzz(6);
@@ -823,9 +934,15 @@ function showTab(t){
 }
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
 function setMode(m){appEl.classList.toggle('home',m==='home');appEl.classList.toggle('flow',m==='flow')}
-function startFlow(){buzz(12);si=0;render(1);setMode('flow')}
-function goHome(){setMode('home');showTab(tabNow);refreshAll()}
-$('#h-start').onclick=startFlow;
+function startFlow(d){
+  buzz(12);target=d||null;
+  seq=target?[1,3,4,5,6,7,8]:(pending?[2,3,4,5,6,7,8]:[1,3,4,5,6,7,8]);
+  const ck=document.querySelector('.chk');
+  if(ck){ck.style.display=target?'none':'';if(target){P.sleepNow=false;ck.classList.remove('on')}}
+  $('#app').classList.remove('fin');si=0;render(1);setMode('flow');
+}
+function goHome(){target=null;setMode('home');showTab(tabNow);refreshAll()}
+$('#h-start').onclick=()=>startFlow(bigTarget);
 function refreshAll(){
   RECS=collect(LS.get('sleep.cache',[]));renderHome();
   loadRemote().then(r=>{RECS=r;renderHome()});

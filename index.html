@@ -672,6 +672,7 @@ function buildRecord(){
     caffeine:P.caf.value===0?{kinds:P.cafKind.labels,cups:P.cafCups.value,
       start:P.cafStart.touched?fmtT(P.cafStart.value):null,end:P.cafEnd.touched?fmtT(P.cafEnd.value):null}:null,
     exercise:{personal:P.ex.has(1),pe:P.ex.has(2),minutes:P.ex.has(1)?P.exMin.value:0},
+    planned:!!P.sleepNow&&!target,
     day:{type:P.today.labels,exam:['여유','시험 임박','시험'][P.exam.value],load:P.load.value+1,note:P.note.value.trim()}};
   return rec;
 }
@@ -824,7 +825,21 @@ function analyze(r){
   const min=Math.round((wk-bed)/60000);if(min<=0||min>=24*60)return null;
   return{bed,wake:wk,min,r};
 }
-const analyzed=()=>RECS.map(analyze).filter(Boolean).sort((a,b)=>a.wake-b.wake);
+/* 같은 수면이 두 번 잡히지 않게 정리: (1) '지금 바로 취침'으로 만든 계획 기록은 뒤이은 기상 기록이 있으면 제외, (2) 같은 기상일은 마지막 기록만 */
+function dedupeSleep(list){
+  const T=x=>+new Date(x);
+  const out=list.filter(r=>{
+    if(!r||!r.saved)return false;
+    const sv=T(r.saved);
+    return !list.some(o=>o!==r&&o.bedTime&&T(o.bedTime)>=sv-1000&&T(o.bedTime)<=sv+10000&&o.awakenings!=null&&r.awakenings==null);
+  });
+  return out;
+}
+const analyzed=()=>{
+  const A=dedupeSleep(RECS).map(analyze).filter(Boolean).sort((a,b)=>a.wake-b.wake);
+  const m=new Map();A.forEach(x=>{const k=x.wake.getFullYear()+'-'+x.wake.getMonth()+'-'+x.wake.getDate();const o=m.get(k);if(!o||String(x.r.saved)>String(o.r.saved))m.set(k,x)});
+  return [...m.values()].sort((a,b)=>a.wake-b.wake);
+};
 function inRange(A,n){const lim=new Date();lim.setHours(0,0,0,0);lim.setDate(lim.getDate()-(n-1));return A.filter(a=>a.wake>=lim)}
 function barChart(host,arr,{show=true,every=1}={}){
   host.innerHTML='';

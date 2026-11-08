@@ -112,9 +112,20 @@ function analyze(r){
   const min=Math.round((wk-bed)/60000);if(min<=0||min>=24*60)return null;
   return{bed,wake:wk,min,r};
 }
+/* 같은 수면이 두 번 잡히지 않게 정리: (1) '지금 바로 취침'으로 만든 계획 기록은 뒤이은 기상 기록이 있으면 제외, (2) 같은 기상일은 마지막 기록만 */
+function dedupeSleep(list){
+  const T=x=>+new Date(x);
+  const out=list.filter(r=>{
+    if(!r||!r.saved)return false;
+    const sv=T(r.saved);
+    return !list.some(o=>o!==r&&o.bedTime&&T(o.bedTime)>=sv-1000&&T(o.bedTime)<=sv+10000&&o.awakenings!=null&&r.awakenings==null);
+  });
+  return out;
+}
 let ALL=[],range=7;
 const rows=()=>{
-  let A=ALL.map(analyze).filter(Boolean).sort((a,b)=>a.wake-b.wake);
+  let A=dedupeSleep(ALL).map(analyze).filter(Boolean).sort((a,b)=>a.wake-b.wake);
+  {const m=new Map();A.forEach(x=>{const k=x.wake.toDateString();const o=m.get(k);if(!o||String(x.r.saved)>String(o.r.saved))m.set(k,x)});A=[...m.values()].sort((a,b)=>a.wake-b.wake)}
   if(range){const lim=new Date();lim.setHours(0,0,0,0);lim.setDate(lim.getDate()-(range-1));A=A.filter(a=>a.wake>=lim)}
   return A;
 };
@@ -211,7 +222,7 @@ const SECTIONS=[
     trendChart($('.h',c),A.map(a=>{let m=a.bed.getHours()*60+a.bed.getMinutes();if(m<12*60)m+=1440;return{x:a.wake,y:m}}),{});
     return c}},
   {id:'wake',render(A){
-    const c=el('div','card');c.innerHTML='<div class="ct">기상 시각 추세</div><div class="cs">7시 이전에 일어난 날은 주황색으로 표시됩니다.</div><div class="h"></div><div class="legend"><span><i style="background:var(--c1)"></i>7시 이후</span><span><i style="background:var(--hi)"></i>7시 이전</span></div>';
+    const c=el('div','card');c.innerHTML='<div class="ct">기상 시각 추세</div><div class="cs">7시 이전에 일어난 날은 주황색으로 표시해요.</div><div class="h"></div><div class="legend"><span><i style="background:var(--c1)"></i>7시 이후</span><span><i style="background:var(--hi)"></i>7시 이전</span></div>';
     trendChart($('.h',c),A.map(a=>{const m=a.wake.getHours()*60+a.wake.getMinutes();return{x:a.wake,y:m,hi:m<7*60}}),{guide:7*60,guideLabel:'07:00'});
     return c}},
   {id:'mood',render(A){
@@ -221,7 +232,7 @@ const SECTIONS=[
     return c}},
   {id:'bySleep',card:()=>compareCard({
     title:'수면 시간에 따른 하루의 기분 변화',
-    sub:'좌우를 비교하세요.',
+    sub:'수면 시간별로 묶어서 왼쪽과 오른쪽을 비교해요. 시간 구간은 반올림 기준이에요(예: 5시간 = 4시간 30분~5시간 29분).',
     groups:[
       {label:'전체',test:()=>true},
       {label:'5시간 미만',test:sleepBin(0,300)},

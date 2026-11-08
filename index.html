@@ -206,6 +206,8 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
 .cd{position:relative;height:46px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
 .cd .c{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1.5px solid transparent;transition:border-color .2s,transform .25s var(--spring)}
 .cd.has .c{background:rgba(86,160,255,var(--a))}
+.cd.sumonly .c{border:1.5px solid rgba(110,170,255,.75)}
+.cal-l u.r{border-style:solid;border-color:rgba(110,170,255,.75)}
 .cd.miss .c{border:1.5px dashed rgba(255,255,255,.35)}
 .cd.sel .c{border:2px solid #fff;transform:scale(1.08)}
 .cd.today::after{content:'';position:absolute;bottom:0;width:4px;height:4px;border-radius:50%;background:#fff}
@@ -635,7 +637,7 @@ const SLEEPLAT=['짧음','중간','김'];
   const d=mkQ('기타',null);const ta=el('textarea','ta');ta.placeholder='특이사항이 있다면 적어 주세요';d.body.append(ta);P.note=ta;
   const foot=el('div','foot','<p>오늘 하루도 수고하셨어요! 안녕히 주무세요</p>');
   const chk=el('button','chk','<span class="box"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3.2L13 4.5"/></svg></span><span>지금 바로 취침</span>');
-  chk.type='button';P.sleepNow=false;
+  chk.type='button';P.sleepNow=true;chk.classList.add('on');
   chk.onclick=()=>{P.sleepNow=!P.sleepNow;chk.classList.toggle('on',P.sleepNow);buzz(10)};
   foot.append(chk);
   pages[8]=mkPage('하루 정리',{req:[a.q,b.q,c.q],opt:[d.q],footer:foot});
@@ -673,6 +675,7 @@ function buildRecord(){
       start:P.cafStart.touched?fmtT(P.cafStart.value):null,end:P.cafEnd.touched?fmtT(P.cafEnd.value):null}:null,
     exercise:{personal:P.ex.has(1),pe:P.ex.has(2),minutes:P.ex.has(1)?P.exMin.value:0},
     planned:!!P.sleepNow&&!target,
+    logicalDay:target?key(target):key(new Date(Date.now()-5*3600e3)),
     day:{type:P.today.labels,exam:['여유','시험 임박','시험'][P.exam.value],load:P.load.value+1,note:P.note.value.trim()}};
   return rec;
 }
@@ -825,6 +828,21 @@ function analyze(r){
   const min=Math.round((wk-bed)/60000);if(min<=0||min>=24*60)return null;
   return{bed,wake:wk,min,r};
 }
+/* 하루 단위 정리: 하루는 05시에 시작(새벽 입력은 전날로 계산). 수면=기상 시각이 있는 기록, 하루 정리=그날 입력한 기록 */
+function logicalDay(r){
+  if(r.logicalDay)return r.logicalDay;
+  const d=new Date(+new Date(r.saved)-5*3600e3);
+  return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+}
+function buildDays(list){
+  const days=new Map(),now=new Date();
+  const get=k=>{if(!days.has(k)){const [Y,M,D]=k.split('-').map(Number);days.set(k,{day:new Date(Y,M-1,D),sleep:null,sum:null})}return days.get(k)};
+  list.filter(r=>r&&r.saved&&r.fatigue).forEach(r=>{const e=get(logicalDay(r));if(!e.sum||String(r.saved)>String(e.sum.saved))e.sum=r});
+  dedupeSleep(list).map(analyze).filter(a=>a&&a.wake<=now).forEach(a=>{
+    const k=a.wake.getFullYear()+'-'+pad2(a.wake.getMonth()+1)+'-'+pad2(a.wake.getDate()),e=get(k);
+    if(!e.sleep||String(a.r.saved)>String(e.sleep.r.saved))e.sleep=a});
+  return days;
+}
 /* 같은 수면이 두 번 잡히지 않게 정리: (1) '지금 바로 취침'으로 만든 계획 기록은 뒤이은 기상 기록이 있으면 제외, (2) 같은 기상일은 마지막 기록만 */
 function dedupeSleep(list){
   const T=x=>+new Date(x);
@@ -836,7 +854,8 @@ function dedupeSleep(list){
   return out;
 }
 const analyzed=()=>{
-  const A=dedupeSleep(RECS).map(analyze).filter(Boolean).sort((a,b)=>a.wake-b.wake);
+  const NOW=new Date();
+  const A=dedupeSleep(RECS).map(analyze).filter(a=>a&&a.wake<=NOW).sort((a,b)=>a.wake-b.wake);
   const m=new Map();A.forEach(x=>{const k=x.wake.getFullYear()+'-'+x.wake.getMonth()+'-'+x.wake.getDate();const o=m.get(k);if(!o||String(x.r.saved)>String(o.r.saved))m.set(k,x)});
   return [...m.values()].sort((a,b)=>a.wake-b.wake);
 };
@@ -857,10 +876,11 @@ function barChart(host,arr,{show=true,every=1}={}){
 const key=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
 const day0=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
 const esc=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let selDate=null,calMonth=day0(new Date()),byDay=new Map(),bigTarget=null;calMonth.setDate(1);
+let selDate=null,calMonth=day0(new Date()),byDay=new Map(),sumDay=new Map(),bigTarget=null;calMonth.setDate(1);
 function renderHome(){
   const now=new Date(),A=analyzed(),last=A[A.length-1],card=$('#h-card');
   byDay=new Map();A.forEach(a=>byDay.set(key(a.wake),a));
+  sumDay=new Map();buildDays(RECS).forEach((e,k)=>{if(e.sum)sumDay.set(k,e.sum)});
   $('#h-date').textContent=`${now.getMonth()+1}월 ${now.getDate()}일 ${DOW[now.getDay()]}요일`;
   const lw=day0(now);lw.setDate(lw.getDate()-7);const lr=byDay.get(key(lw));
   const lwHtml=`<div class="lw">지난주 ${DOW[lw.getDay()]}요일(${lw.getMonth()+1}/${lw.getDate()}) 취침<b>${lr?clk(lr.bed):'기록 없음'}</b></div>`;
@@ -878,7 +898,7 @@ function renderHome(){
 }
 function renderCal(){
   const host=$('#cal'),y=calMonth.getFullYear(),m=calMonth.getMonth(),today=day0(new Date());
-  const ws=[...byDay.values()].map(a=>+day0(a.wake)),first=ws.length?Math.min(...ws):null;
+  const ws=[...byDay.values()].map(a=>+day0(a.wake)).concat([...sumDay.keys()].map(k=>{const [Y,M,D]=k.split('-').map(Number);return +new Date(Y,M-1,D)})),first=ws.length?Math.min(...ws):null;
   const startDow=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();
   let h=`<div class="ct">수면 달력</div><div class="cal-h"><button type="button" id="cal-p" aria-label="이전 달">‹</button><b>${y}년 ${m+1}월</b><button type="button" id="cal-n" aria-label="다음 달">›</button></div><div class="cal-g">`;
   [...DOW].forEach(w=>h+=`<div class="cal-w">${w}</div>`);
@@ -887,11 +907,12 @@ function renderCal(){
     const dt=new Date(y,m,d),k=key(dt),a=byDay.get(k),fut=dt>today,isT=+dt===+today;
     let cls='cd',st='';
     if(a){const al=.2+.8*clamp((a.min-240)/300,0,1);st=`--a:${al.toFixed(2)};${al>.62?'color:#0b1020':''}`;cls+=' has'}
+    else if(sumDay.has(k))cls+=' sumonly';
     else if(!fut&&!isT&&first!=null&&+dt>first)cls+=' miss';
     if(fut)cls+=' fut';if(isT)cls+=' today';if(selDate&&k===key(selDate))cls+=' sel';
     h+=`<button type="button" class="${cls}" data-k="${k}"${fut?' disabled':''}><span class="c" style="${st}">${d}</span></button>`;
   }
-  h+=`</div><div class="cal-l"><span>4시간↓</span><i></i><span>9시간↑</span><em><u></u>빠트린 날</em></div>`;
+  h+=`</div><div class="cal-l"><span>4시간</span><i></i><span>9시간</span><em><u class="r"></u>하루 정리만<u></u>빠트린 날</em></div>`;
   host.innerHTML=h;
   const cm=day0(new Date());cm.setDate(1);
   $('#cal-n').disabled=calMonth>=cm;
@@ -909,20 +930,20 @@ function renderDetail(){
   const box=$('#cal-detail');
   if(!selDate){box.style.display='none';return}
   box.style.display='';
-  const a=byDay.get(key(selDate)),today=day0(new Date());
+  const k=key(selDate),a=byDay.get(k),r=sumDay.get(k)||(a&&a.r),today=day0(new Date());
   const title=`${selDate.getMonth()+1}월 ${selDate.getDate()}일 (${DOW[selDate.getDay()]})`;
-  if(!a){
+  if(!a&&!r){
     const msg=selDate>today?'아직 오지 않은 날이에요.':(+selDate===+today?(pending?'취침은 기록됐어요. 기상 기록을 기다리고 있어요.':'아직 기록이 없어요.'):'이 날은 기록이 없어요.<br>아래 버튼으로 이 날의 기록을 남길 수 있어요.');
     box.innerHTML=`<div class="ct">${title}</div><div class="sub" style="margin-top:0">${msg}</div>`;return;
   }
-  const r=a.r,f=r.fatigue||{},dr=r.drowsy||{},cf=r.caffeine,ex=r.exercise||{},dy=r.day||{};
+  const f=r.fatigue||{},dr=r.drowsy||{},cf=r.caffeine,ex=r.exercise||{},dy=r.day||{},sr=a?a.r:{};
   const exs=[ex.personal?`개인 운동 ${ex.minutes||0}분`:null,ex.pe?'체육 수업':null].filter(Boolean);
   const rows=[
-    ['취침 · 기상',`${clk(a.bed)} → ${clk(a.wake)}`],
-    ['잠드는 데',r.latency||'-'],
-    ['취침 장소',r.place||'-'],
-    r.awakenings!=null?['중간에 깬 횟수',r.awakenings+'회']:null,
-    r.naturalWake?['눈이 떠진 시각',r.naturalWake]:null,
+    a?['취침 · 기상',`${clk(a.bed)} → ${clk(a.wake)}`]:null,
+    a&&sr.latency?['잠드는 데',sr.latency]:null,
+    a&&(sr.place||r.place)?['취침 장소',sr.place||r.place]:null,
+    a&&sr.awakenings!=null?['중간에 깬 횟수',sr.awakenings+'회']:null,
+    a&&sr.naturalWake?['눈이 떠진 시각',sr.naturalWake]:null,
     ['하루 기분',`기상 직후 ${MOODN(f.wake)}<br>아침 ${MOODN(f.morning)}<br>오후 ${MOODN(f.afternoon)}<br>저녁 ${MOODN(f.evening)}`],
     ['식곤증',dr.level>0?`${['없음','경미','중등','중증'][dr.level]}${dr.time?' ('+dr.time+')':''}`:'없음'],
     ['카페인',cf?`${esc((cf.kinds||[]).join(', ')||'-')} · ${cf.cups}잔${cf.start?` (${cf.start}~${cf.end||'?'})`:''}`:'섭취 안 함'],
@@ -930,7 +951,8 @@ function renderDetail(){
     ['일정',`${esc((dy.type||[]).join(', ')||'-')} · 시험 ${esc(dy.exam||'-')} · 강도 ${dy.load||'-'}/5`],
     dy.note?['기타',esc(dy.note)]:null
   ].filter(Boolean);
-  box.innerHTML=`<div class="ct">${title}</div><div class="bnum">${dur(a.min)}</div><div style="height:12px"></div>`+rows.map(([k,v])=>`<div class="drow"><span>${k}</span><b>${v}</b></div>`).join('');
+  const head=a?`<div class="bnum">${dur(a.min)}</div>`:`<div class="bnum" style="font-size:20px">수면 기록 없음</div><div class="sub">하루 정리만 있어요. 아래 버튼으로 이 날 기록을 다시 남기면 수면과 하루 정리가 새 값으로 바뀌어요.</div>`;
+  box.innerHTML=`<div class="ct">${title}</div>${head}<div style="height:12px"></div>`+rows.map(([k2,v])=>`<div class="drow"><span>${k2}</span><b>${v}</b></div>`).join('');
 }
 function updateBig(){
   const today=day0(new Date());bigTarget=null;
@@ -953,7 +975,7 @@ function startFlow(d){
   buzz(12);target=d||null;
   seq=target?[1,3,4,5,6,7,8]:(pending?[2,3,4,5,6,7,8]:[1,3,4,5,6,7,8]);
   const ck=document.querySelector('.chk');
-  if(ck){ck.style.display=target?'none':'';if(target){P.sleepNow=false;ck.classList.remove('on')}}
+  if(ck){ck.style.display=target?'none':'';P.sleepNow=!target;ck.classList.toggle('on',!target)}
   $('#app').classList.remove('fin');si=0;render(1);setMode('flow');
 }
 function goHome(){target=null;setMode('home');showTab(tabNow);refreshAll()}

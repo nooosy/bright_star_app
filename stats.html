@@ -122,11 +122,25 @@ function dedupeSleep(list){
   });
   return out;
 }
+/* 하루 단위 정리: 하루는 05시에 시작(새벽 입력은 전날로 계산). 수면=기상 시각이 있는 기록, 하루 정리=그날 입력한 기록 */
+function logicalDay(r){
+  if(r.logicalDay)return r.logicalDay;
+  const d=new Date(+new Date(r.saved)-5*3600e3);
+  return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+}
+function buildDays(list){
+  const days=new Map(),now=new Date();
+  const get=k=>{if(!days.has(k)){const [Y,M,D]=k.split('-').map(Number);days.set(k,{day:new Date(Y,M-1,D),sleep:null,sum:null})}return days.get(k)};
+  list.filter(r=>r&&r.saved&&r.fatigue).forEach(r=>{const e=get(logicalDay(r));if(!e.sum||String(r.saved)>String(e.sum.saved))e.sum=r});
+  dedupeSleep(list).map(analyze).filter(a=>a&&a.wake<=now).forEach(a=>{
+    const k=a.wake.getFullYear()+'-'+pad2(a.wake.getMonth()+1)+'-'+pad2(a.wake.getDate()),e=get(k);
+    if(!e.sleep||String(a.r.saved)>String(e.sleep.r.saved))e.sleep=a});
+  return days;
+}
 let ALL=[],range=7;
 const rows=()=>{
-  let A=dedupeSleep(ALL).map(analyze).filter(Boolean).sort((a,b)=>a.wake-b.wake);
-  {const m=new Map();A.forEach(x=>{const k=x.wake.toDateString();const o=m.get(k);if(!o||String(x.r.saved)>String(o.r.saved))m.set(k,x)});A=[...m.values()].sort((a,b)=>a.wake-b.wake)}
-  if(range){const lim=new Date();lim.setHours(0,0,0,0);lim.setDate(lim.getDate()-(range-1));A=A.filter(a=>a.wake>=lim)}
+  let A=[...buildDays(ALL).values()].map(e=>({day:e.day,bed:e.sleep?e.sleep.bed:null,wake:e.sleep?e.sleep.wake:null,min:e.sleep?e.sleep.min:null,r:e.sum||e.sleep.r})).sort((a,b)=>a.day-b.day);
+  if(range){const lim=new Date();lim.setHours(0,0,0,0);lim.setDate(lim.getDate()-(range-1));A=A.filter(a=>a.day>=lim)}
   return A;
 };
 const fmtMin=m=>`${pad2(Math.floor(m/60)%24)}:${pad2(Math.round(m)%60)}`;
@@ -192,7 +206,7 @@ function compareCard({title,sub,groups,defaults}){
       const g=groups[p.sel.value],sub=A.filter(g.test);
       if(sub.length)moodChart(p.chart,moodAvgs(sub),p.color);
       else p.chart.innerHTML='<div class="empty" style="padding:70px 0">기록 없음</div>';
-      p.n.textContent=`${sub.length}회 기록`+(sub.length?` · 평균 ${dur(avg(sub.map(a=>a.min)))}`:'');
+      p.n.textContent=`${sub.length}회 기록`+(sub.some(a=>a.min!=null)?` · 평균 ${dur(avg(sub.filter(a=>a.min!=null).map(a=>a.min)))}`:'');
     });
   };
   [0,1].forEach(i=>{
@@ -208,20 +222,20 @@ function compareCard({title,sub,groups,defaults}){
 }
 
 /* ───── 섹션 목록 (나중에 여기에 추가하면 돼요) ───── */
-const sleepBin=(lo,hi)=>a=>a.min>=lo&&a.min<hi;
+const sleepBin=(lo,hi)=>a=>a.min!=null&&a.min>=lo&&a.min<hi;
 const SECTIONS=[
-  {id:'summary',render(A){
+  {id:'summary',render(A0){const A=A0.filter(a=>a.min!=null);
     const n=A.length,bedM=avg(A.map(a=>{let m=a.bed.getHours()*60+a.bed.getMinutes();if(m<12*60)m+=1440;return m}));
     const wakeM=avg(A.map(a=>a.wake.getHours()*60+a.wake.getMinutes()));
     const cell=(l,v)=>`<div class="stat"><span>${l}</span><b>${v}</b></div>`;
     const d=el('div','sgrid');
     d.innerHTML=cell('평균 수면 시간',n?dur(avg(A.map(a=>a.min))):'-')+cell('기록 횟수',n+'회')+cell('평균 취침 시각',bedM==null?'-':fmtMin(bedM))+cell('평균 기상 시각',wakeM==null?'-':fmtMin(wakeM));
     return d}},
-  {id:'bed',render(A){
+  {id:'bed',render(A0){const A=A0.filter(a=>a.min!=null);
     const c=el('div','card');c.innerHTML='<div class="ct">취침 시각 추세</div><div class="cs">자정 이후는 24시, 25시…로 이어서 표시해요.</div><div class="h"></div>';
     trendChart($('.h',c),A.map(a=>{let m=a.bed.getHours()*60+a.bed.getMinutes();if(m<12*60)m+=1440;return{x:a.wake,y:m}}),{});
     return c}},
-  {id:'wake',render(A){
+  {id:'wake',render(A0){const A=A0.filter(a=>a.min!=null);
     const c=el('div','card');c.innerHTML='<div class="ct">기상 시각 추세</div><div class="cs">7시 이전에 일어난 날은 주황색으로 표시해요.</div><div class="h"></div><div class="legend"><span><i style="background:var(--c1)"></i>7시 이후</span><span><i style="background:var(--hi)"></i>7시 이전</span></div>';
     trendChart($('.h',c),A.map(a=>{const m=a.wake.getHours()*60+a.wake.getMinutes();return{x:a.wake,y:m,hi:m<7*60}}),{guide:7*60,guideLabel:'07:00'});
     return c}},

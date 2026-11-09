@@ -189,7 +189,7 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
 .ct small{font-size:12px;font-weight:600;color:var(--sub);margin-left:6px}
 .bnum{font-size:34px;font-weight:800;letter-spacing:-.5px}
 .card .sub{font-size:13px;font-weight:600;color:#bcd2ff;margin-top:10px;line-height:1.7}
-.big{position:absolute;left:21px;right:21px;bottom:98px;height:100px;z-index:5;border:2px solid #fff;border-radius:50px;background:rgba(14,18,32,.82);
+.big{position:absolute;left:21px;right:21px;bottom:90px;height:88px;z-index:5;border:2px solid #fff;border-radius:50px;background:rgba(14,18,32,.82);
   -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
   transition:transform .3s var(--spring),background .2s}
 .app.flow .big{display:none}
@@ -264,9 +264,9 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
     <h1>수면 기록</h1>
     <p class="date" id="h-date"></p>
     <div class="card" id="h-card"></div>
-    <div class="card"><div class="ct" id="h-ct">최근 7일 수면 시간</div><div id="h-chart"></div></div>
     <div class="card" id="cal"></div>
     <div class="card" id="cal-detail" style="display:none"></div>
+    <div class="card"><div class="ct" id="h-ct">최근 7일 수면 시간</div><div id="h-chart"></div></div>
   </section>
   <button class="big" id="h-start" type="button"><b id="h-big"></b><small id="h-sub"></small></button>
   <nav class="tabs" id="tabs">
@@ -651,7 +651,7 @@ const pending=LS.get('sleep.pending',null);
 let target=null; // 빠트린 날 기록 시 그 날(기상일)의 0시
 
 function bedISO(t){ // AM 취침은 오늘 새벽, PM 취침은 어제 밤
-  const d=target?new Date(target):new Date();if(t.ap==='PM')d.setDate(d.getDate()-1);
+  const d=target?new Date(target):new Date(Date.now()-5*3600e3);if(t.ap==='PM')d.setDate(d.getDate()-1);
   d.setHours(to24(t),t.minute??0,0,0);return d.toISOString();
 }
 function wakeAfter(bedIso,t){
@@ -897,7 +897,7 @@ function renderHome(){
   renderCal();renderDetail();updateBig();
 }
 function renderCal(){
-  const host=$('#cal'),y=calMonth.getFullYear(),m=calMonth.getMonth(),today=day0(new Date());
+  const host=$('#cal'),y=calMonth.getFullYear(),m=calMonth.getMonth(),today=day0(new Date(Date.now()-5*3600e3));
   const ws=[...byDay.values()].map(a=>+day0(a.wake)).concat([...sumDay.keys()].map(k=>{const [Y,M,D]=k.split('-').map(Number);return +new Date(Y,M-1,D)})),first=ws.length?Math.min(...ws):null;
   const startDow=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();
   let h=`<div class="ct">수면 달력</div><div class="cal-h"><button type="button" id="cal-p" aria-label="이전 달">‹</button><b>${y}년 ${m+1}월</b><button type="button" id="cal-n" aria-label="다음 달">›</button></div><div class="cal-g">`;
@@ -930,7 +930,7 @@ function renderDetail(){
   const box=$('#cal-detail');
   if(!selDate){box.style.display='none';return}
   box.style.display='';
-  const k=key(selDate),a=byDay.get(k),r=sumDay.get(k)||(a&&a.r),today=day0(new Date());
+  const k=key(selDate),a=byDay.get(k),r=sumDay.get(k)||(a&&a.r),today=day0(new Date(Date.now()-5*3600e3));
   const title=`${selDate.getMonth()+1}월 ${selDate.getDate()}일 (${DOW[selDate.getDay()]})`;
   if(!a&&!r){
     const msg=selDate>today?'아직 오지 않은 날이에요.':(+selDate===+today?(pending?'취침은 기록됐어요. 기상 기록을 기다리고 있어요.':'아직 기록이 없어요.'):'이 날은 기록이 없어요.<br>아래 버튼으로 이 날의 기록을 남길 수 있어요.');
@@ -955,10 +955,11 @@ function renderDetail(){
   box.innerHTML=`<div class="ct">${title}</div>${head}<div style="height:12px"></div>`+rows.map(([k2,v])=>`<div class="drow"><span>${k2}</span><b>${v}</b></div>`).join('');
 }
 function updateBig(){
-  const today=day0(new Date());bigTarget=null;
-  if(selDate&&selDate<today&&!byDay.get(key(selDate)))bigTarget=selDate;
+  const today=day0(new Date(Date.now()-5*3600e3));bigTarget=null;
+  if(selDate&&selDate<today)bigTarget=selDate;
   let t,sb;
-  if(bigTarget){t=`${bigTarget.getMonth()+1}/${bigTarget.getDate()} 기록 시작`;sb='빠트린 날의 기록을 남겨요'}
+  if(bigTarget&&byDay.get(key(bigTarget))){t=`${bigTarget.getMonth()+1}/${bigTarget.getDate()} 수정하기`;sb='이미 남긴 기록을 고쳐요'}
+  else if(bigTarget){t=`${bigTarget.getMonth()+1}/${bigTarget.getDate()} 기록 시작`;sb='빠트린 날의 기록을 남겨요'}
   else if(pending){t='기상 기록하기';sb='취침 후 이어서 기록해요'}
   else{t=`${today.getMonth()+1}/${today.getDate()} 기록 시작`;sb='취침 기록부터 시작해요'}
   $('#h-big').textContent=t;$('#h-sub').textContent=sb;

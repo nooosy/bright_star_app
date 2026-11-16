@@ -69,8 +69,7 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
 .aura b:nth-child(3){inset:-2px;background:radial-gradient(circle at 70% 68%,var(--b) 0,transparent 58%);filter:blur(5px);mix-blend-mode:screen;animation:fl2 var(--t3) ease-in-out var(--d3) infinite}
 .aura b:nth-child(4){inset:-1px;background:radial-gradient(circle at 50% 80%,var(--c) 0,transparent 50%);filter:blur(5px);mix-blend-mode:screen;animation:fl3 var(--t4) ease-in-out var(--d4) infinite}
 .aura b:nth-child(5){inset:-6px;background:radial-gradient(circle,var(--b) 0,transparent 66%);opacity:.3;filter:blur(6px);animation:halo var(--t5) ease-in-out var(--d5) infinite}
-@keyframes body{
- 0%{border-radius:50%;transform:rotate(0) scale(1)}
+@keyframes body{0%{border-radius:50%;transform:rotate(0) scale(1)}
  25%{border-radius:56% 44% 52% 48%/47% 55% 45% 53%;transform:rotate(70deg) scale(1.05,.97)}
  50%{border-radius:45% 55% 42% 58%/56% 44% 56% 44%;transform:rotate(180deg) scale(.97,1.06)}
  75%{border-radius:54% 46% 58% 42%/44% 56% 47% 53%;transform:rotate(270deg) scale(1.06,.98)}
@@ -285,7 +284,7 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
 </main>
 
 <script>
-/* ===== Supabase 설정 (여기 두 값만 채우세요) ===== */
+/* ===== Supabase 설정 ===== */
 const SUPABASE_URL='https://rznkytirleepgferwtee.supabase.co';
 const SUPABASE_KEY='sb_publishable_En3CwvmXpDV1nROo9tD7aw_1xiwDJ9i';
 const SB_TABLE='sleep_records';
@@ -318,7 +317,7 @@ function Spring(x0,onUpdate,{k=200,c=17}={}){
     kick(vel){v=vel;start()}};
 }
 
-/* ── 오로라 오브: 인스턴스마다 속도·방향·진폭·위상이 다름 ── */
+/* ── 오로라 오브 ── */
 function makeAura(cls){
   const e=el('div','aura '+(cls||''),'<b></b><b></b><b></b><b></b><b></b>');
   const r=(a,b)=>a+Math.random()*(b-a);
@@ -413,10 +412,11 @@ function Wheel(root,{items,index=0,loop=false,fixed=false,onChange}){
   }
   return{step(d){const t=Math.round(sp.x/H)+d;sp.to((loop?t:clamp(t,0,N-1))*H,{k:260,c:16});buzz(7)},
     goNearest(i){const c=Math.round(sp.x/H);const diff=loop?mod(i-c+N/2,N)-N/2:i-c;sp.to((c+diff)*H,{k:200,c:17})},
+    jump(i){sp.set(i*H)},   /* [수정] 애니메이션 없이 값 지정 */
     get index(){return idxOf(sp.x)}};
 }
 
-/* ===== 시각 선택: AM/PM + 시:분 (분 '--' 고정 가능, 선택 질문은 흐리게 시작) ===== */
+/* ===== 시각 선택 ===== */
 function TimePicker(root,{ap='AM',hour=7,minute=0,minuteFixed=false,optional=false,onTouch}={}){
   root.classList.add('time');if(optional)root.classList.add('dim');
   let cur=ap,touched=!optional;
@@ -430,6 +430,8 @@ function TimePicker(root,{ap='AM',hour=7,minute=0,minuteFixed=false,optional=fal
   const h=Wheel(hw,{items:Array.from({length:12},(_,i)=>String(i+1)),loop:true,index:hour-1});
   const m=minuteFixed?Wheel(mw,{items:['--'],fixed:true}):Wheel(mw,{items:Array.from({length:60},(_,i)=>pad2(i)),loop:true,index:minute});
   return{get touched(){return touched},
+    set(t){ if(!t)return; pick(t.ap,false); h.jump(t.hour-1);              /* [수정] 저장값 채우기 */
+            if(!minuteFixed&&t.minute!=null)m.jump(t.minute); touch(); },
     get value(){return{ap:cur,hour:h.index+1,minute:minuteFixed?null:m.index}},
     reset(){touched=false;root.classList.add('dim');pick(ap,false);h.goNearest(hour-1);if(!minuteFixed)m.goNearest(minute);onTouch&&onTouch(false)}};
 }
@@ -443,10 +445,11 @@ function Count(root,{items,index=0,unit}){
   const dn=el('button','chev','<svg viewBox="0 0 22 10"><path d="M2 2l9 6 9-6"/></svg>');
   const w=el('div','wheel'),st=el('div','stepper');st.append(up,w,dn);root.append(st,el('span','unit',unit));
   const wh=Wheel(w,{items,index});up.onclick=()=>wh.step(1);dn.onclick=()=>wh.step(-1);
-  return{get value(){return +items[wh.index]}};
+  return{get value(){return +items[wh.index]},
+    set(v){const i=items.indexOf(String(v)); if(i>=0)wh.jump(i)}};   /* [수정] */
 }
 
-/* ===== 항목 배지 (다중선택, 가로 스크롤) ===== */
+/* ===== 항목 배지 ===== */
 const BCOL=['#ee8f33','#33bfea','#a23ae8','#d94a6a','#3568ee','#33ee88','#8a8f99'];
 function Badges(root,{items,rows=2,def=[],rule,onChange}){
   const bx=el('div','badges'),wrap=el('div','bwrap');
@@ -467,10 +470,11 @@ function Badges(root,{items,rows=2,def=[],rule,onChange}){
   window.addEventListener('pointerup',()=>{if(!down)return;down=false;bx.classList.remove('grab');
     if(moved){let v=vel*16;const f=()=>{bx.scrollLeft+=v;v*=.93;if(Math.abs(v)>.3)raf=requestAnimationFrame(f)};f()}});
   bx.addEventListener('click',e=>{if(moved){e.stopPropagation();e.preventDefault();moved=false}},true);
-  return{get value(){return [...sel]},get labels(){return [...sel].map(i=>items[i])},has:i=>sel.has(i)};
+  return{get value(){return [...sel]},get labels(){return [...sel].map(i=>items[i])},has:i=>sel.has(i),
+    set(arr){apply(new Set(arr))}};   /* [수정] */
 }
 
-/* ===== 기분 선택 (세로 드래그, 위=파랑 → 아래=빨강) ===== */
+/* ===== 기분 선택 ===== */
 const MOOD=[
  ['개운함','정신 맑고 또렷, 집중 매우 잘 됨'],
  ['좋음','경미한 피로감, 무시 가능'],
@@ -518,7 +522,8 @@ function Mood(root,{step=95,face=56,labels=true,upright=false,def=2,onChange}){
   const up=()=>{if(!drag)return;drag=false;sp.to(Y0+cur*step,{k:230,c:15})};
   pill.addEventListener('pointerup',up);pill.addEventListener('pointercancel',up);
   paint();sp.set(Y0+def*step);onChange&&onChange(def);
-  return{get value(){return cur},get h(){return pillH},step};
+  return{get value(){return cur},get h(){return pillH},step,
+    set(i){ if(i>=0&&i<=4){select(i,false); sp.set(Y0+i*step)} }};   /* [수정] */
 }
 
 /* ===== 펼침/접힘 ===== */
@@ -528,8 +533,8 @@ function Reveal(content,open=false){
 }
 
 /* ===== 페이지 조립 도구 ===== */
-const P={};            // 컴포넌트 보관
-const pages={};        // 1~8번 페이지
+const P={};
+const pages={};
 function mkQ(title,desc,{nohead=false}={}){
   const q=el('div','q'+(nohead?' nohead':''));
   if(title&&!nohead){q.append(el('h2','fit',title))}
@@ -555,20 +560,20 @@ function mkPage(title,{req=[],opt=[],footer=null,optHidden=false}={}){
 const LAT=['빠르게 잠듦','조금 뒤척이다 잠듦','잠이 오지 않음'];
 const SLEEPLAT=['짧음','중간','김'];
 
-/* ───── 1. 취침 기록 ───── */
+/* ───── 1 취침 기록 ───── */
 {
   const a=mkQ('취침시각','어제 몇 시에 자리에 누우셨나요?');P.bedTime=TimePicker(a.body,{ap:'PM',hour:11});
   const b=mkQ('소요시간','잠드는 데 얼마나 오래 걸리셨나요?');P.lat1=Choice(b.body,{labels:SLEEPLAT,track:true,index:1,captions:LAT});
   const c=mkQ('취침 장소','어디서 주무셨나요?');P.place=Choice(c.body,{labels:['집','기숙사','기타'],index:lastIdx('place',3,0)});
   pages[1]=mkPage('취침 기록',{req:[a.q,b.q],opt:[c.q]});
 }
-/* ───── 2. 어제 밤은 어떠셨나요? ───── */
+/* ───── 2 어제 밤은 어떠셨나요? ───── */
 {
   const a=mkQ('소요시간','잠드는 데 얼마나 오래 걸리셨나요?');P.lat2=Choice(a.body,{labels:SLEEPLAT,track:true,index:1,captions:LAT});
   const b=mkQ('중간에 깬 횟수','중간에 몇 번 깼나요?');P.wake=Count(b.body,{items:Array.from({length:21},(_,i)=>String(i)),index:0,unit:'회'});
   pages[2]=mkPage('어제 밤은 어떠셨나요?',{req:[a.q],opt:[b.q]});
 }
-/* ───── 3. 오늘 아침은 어떠셨나요? ───── */
+/* ───── 3 오늘 아침은 어떠셨나요? ───── */
 {
   const a=mkQ('기상 직후 기분','기상 직후 얼마나 피곤하셨나요?');
   P.moodWake=Mood(a.body,{step:84,face:48,def:2});
@@ -577,7 +582,7 @@ const SLEEPLAT=['짧음','중간','김'];
   P.natural=b.tp;P.final=c.tp;
   pages[3]=mkPage('오늘 아침은 어떠셨나요?',{req:[a.q],opt:[b.q,c.q]});
 }
-/* ───── 4. 하루 동안 기분이 어떠셨나요? ───── */
+/* ───── 4 하루 동안 기분이 어떠셨나요? ───── */
 {
   const cols=el('div','cols');
   const defs=[['아침','아침 식사, 오전 수업, 오전','morn'],['오후','점심 무렵, 오후 수업 (식곤증 제외)','aft'],['저녁','8시 이후, 야간자율학습','eve']];
@@ -592,7 +597,7 @@ const SLEEPLAT=['짧음','중간','김'];
   const wrapQ=el('div','q nohead');const bd=el('div','body');bd.append(cols);wrapQ.append(bd);
   pages[4]=mkPage('하루 동안 기분이 어떠셨나요?',{req:[wrapQ]});
 }
-/* ───── 5. 식곤증이 있나요? ───── */
+/* ───── 5 식곤증이 있나요? ───── */
 {
   const DR=['없음 · 아무 증상도 없음','경미함 · 경미한 나른함이 있어 무시할 수 있음','중등도 · 나른하고 잠이 오지만 견딜 수 있음','중증 · 정신을 차리기 어려울 정도로 심한 졸림'];
   const a=mkQ(null,null,{nohead:true});
@@ -602,7 +607,7 @@ const SLEEPLAT=['짧음','중간','김'];
   a.q.style.marginBottom='68px';
   pages[5]=mkPage('식곤증이 있나요?',{req:[a.q,rv.el]});
 }
-/* ───── 6. 카페인 ───── */
+/* ───── 6 카페인 ───── */
 {
   const a=mkQ('오늘 카페인을 섭취하셨나요?',null);
   const b=mkQ('종류','무엇을 마셨나요?');P.cafKind=Badges(b.body,{items:['커피','에너지음료','영양제','기타'],rows:1,def:[0]});
@@ -615,7 +620,7 @@ const SLEEPLAT=['짧음','중간','김'];
   P.caf=Choice(a.body,{labels:['예','아니요'],index:1,onChange:i=>{rv.set(i===0);pg.optRv.set(i===0)}});
   pages[6]=pg;
 }
-/* ───── 7. 운동 ───── */
+/* ───── 7 운동 ───── */
 {
   const a=mkQ('오늘 운동을 했나요?',"'예'는 개인적인 별도의 운동을, '체육'은 학교 체육 교과를 뜻합니다.");
   const b=mkQ('운동 시간','몇 분 정도 운동했나요? 학교 체육 교과의 시간은 제외합니다.');
@@ -626,7 +631,7 @@ const SLEEPLAT=['짧음','중간','김'];
     onChange:v=>rv.set(v.includes(1))});
   pages[7]=mkPage('운동',{req:[a.q,rv.el]});
 }
-/* ───── 8. 하루 정리 ───── */
+/* ───── 8 하루 정리 ───── */
 {
   const wd=new Date().getDay();
   const a=mkQ('오늘은?',null);
@@ -650,7 +655,7 @@ if(qs.has('reset')){LS.del('sleep.pending');LS.del('sleep.records');LS.del('slee
 const pending=LS.get('sleep.pending',null);
 let target=null; // 빠트린 날 기록 시 그 날(기상일)의 0시
 
-function bedISO(t){ // AM 취침은 오늘 새벽, PM 취침은 어제 밤
+function bedISO(t){
   const d=target?new Date(target):new Date(Date.now()-5*3600e3);if(t.ap==='PM')d.setDate(d.getDate()-1);
   d.setHours(to24(t),t.minute??0,0,0);return d.toISOString();
 }
@@ -828,7 +833,7 @@ function analyze(r){
   const min=Math.round((wk-bed)/60000);if(min<=0||min>=24*60)return null;
   return{bed,wake:wk,min,r};
 }
-/* 하루 단위 정리: 하루는 05시에 시작(새벽 입력은 전날로 계산). 수면=기상 시각이 있는 기록, 하루 정리=그날 입력한 기록 */
+/* 하루 단위 정리: 하루는 05시에 시작(새벽 입력은 전날로 계산) */
 function logicalDay(r){
   if(r.logicalDay)return r.logicalDay;
   const d=new Date(+new Date(r.saved)-5*3600e3);
@@ -843,7 +848,7 @@ function buildDays(list){
     if(!e.sleep||String(a.r.saved)>String(e.sleep.r.saved))e.sleep=a});
   return days;
 }
-/* 같은 수면이 두 번 잡히지 않게 정리: (1) '지금 바로 취침'으로 만든 계획 기록은 뒤이은 기상 기록이 있으면 제외, (2) 같은 기상일은 마지막 기록만 */
+/* 같은 수면이 두 번 잡히지 않게 정리 */
 function dedupeSleep(list){
   const T=x=>+new Date(x);
   const out=list.filter(r=>{
@@ -972,14 +977,74 @@ function showTab(t){
 }
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
 function setMode(m){appEl.classList.toggle('home',m==='home');appEl.classList.toggle('flow',m==='flow')}
+
+/* ===== [수정] 저장된 기록을 입력 칸에 채우기 ===== */
+let filled=false;
+const parseT=s=>{ if(!s)return null; const [h,m]=s.split(':').map(Number);
+  if(isNaN(h))return null;
+  return{ap:h>=12?'PM':'AM',hour:h%12||12,minute:isNaN(m)?null:m}; };
+const idx=(arr,v)=>arr.indexOf(v);
+
+function fillFrom(d){
+  const k=key(d), a=byDay.get(k), sr=a?a.r:null, r=sumDay.get(k)||sr;
+  if(!r)return;
+  filled=true;
+
+  /* 수면 정보 */
+  if(sr){
+    if(sr.bedTime){const b=new Date(sr.bedTime);
+      P.bedTime.set({ap:b.getHours()>=12?'PM':'AM',hour:b.getHours()%12||12,minute:b.getMinutes()})}
+    const li=idx(SLEEPLAT,sr.latency); if(li>=0){P.lat1.select(li);P.lat2.select(li)}
+    const pi=idx(['집','기숙사','기타'],sr.place); if(pi>=0)P.place.select(pi);
+    if(sr.awakenings!=null)P.wake.set(sr.awakenings);
+    P.natural.set(parseT(sr.naturalWake));
+    P.final.set(parseT(sr.finalWake));
+  }
+
+  /* 하루 정리 */
+  const f=r.fatigue||{};
+  if(f.wake)P.moodWake.set(f.wake-1);
+  if(f.morning)P.morn.set(f.morning-1);
+  if(f.afternoon)P.aft.set(f.afternoon-1);
+  if(f.evening)P.eve.set(f.evening-1);
+
+  const dr=r.drowsy||{};
+  if(dr.level>0){P.drowsy.select(dr.level); P.drTime.set(parseT(dr.time))}
+
+  const cf=r.caffeine;
+  if(cf){
+    P.caf.select(0);
+    P.cafKind.set((cf.kinds||[]).map(x=>idx(['커피','에너지음료','영양제','기타'],x)).filter(i=>i>=0));
+    P.cafCups.set(cf.cups);
+    P.cafStart.set(parseT(cf.start)); P.cafEnd.set(parseT(cf.end));
+  }
+
+  const ex=r.exercise||{};
+  const exSel=[]; if(ex.personal)exSel.push(1); if(ex.pe)exSel.push(2);
+  P.ex.set(exSel.length?exSel:[0]);
+  if(ex.personal)P.exMin.set(ex.minutes||0);
+
+  const dy=r.day||{};
+  const ti=(dy.type||[]).map(x=>idx(['학기 중','주말','공휴일','학교 행사','방학','기타'],x)).filter(i=>i>=0);
+  if(ti.length)P.today.set(ti);
+  const ei=idx(['여유','시험 임박','시험'],dy.exam); if(ei>=0)P.exam.select(ei);
+  if(dy.load)P.load.select(dy.load-1);
+  P.note.value=dy.note||'';
+}
+
 function startFlow(d){
   buzz(12);target=d||null;
   seq=target?[1,3,4,5,6,7,8]:(pending?[2,3,4,5,6,7,8]:[1,3,4,5,6,7,8]);
   const ck=document.querySelector('.chk');
   if(ck){ck.style.display=target?'none':'';P.sleepNow=!target;ck.classList.toggle('on',!target)}
-  $('#app').classList.remove('fin');si=0;render(1);setMode('flow');
+  $('#app').classList.remove('fin');si=0;
+  if(target)fillFrom(target);      /* [수정] */
+  render(1);setMode('flow');
 }
-function goHome(){target=null;setMode('home');showTab(tabNow);refreshAll()}
+function goHome(){
+  if(filled){location.href=location.pathname;return}   /* [수정] 수정 중 입력값이 다음 기록에 남지 않게 */
+  target=null;setMode('home');showTab(tabNow);refreshAll();
+}
 $('#h-start').onclick=()=>startFlow(bigTarget);
 function refreshAll(){
   RECS=collect(LS.get('sleep.cache',[]));renderHome();

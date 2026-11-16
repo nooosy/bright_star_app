@@ -276,7 +276,7 @@ h1{position:absolute;left:21px;top:94px;width:386px;display:block;white-space:no
   <div class="toast" id="toast"></div>
   <form class="login" id="login" autocomplete="on">
     <h1 style="position:static;font-size:30px;margin-bottom:10px">밝은 별.</h1>
-    <p>본인만 사용할 수 있어요. 로그인해 주세요.</p>
+    <p>로그인해 주세요.</p>
     <input id="lg-email" type="email" placeholder="이메일" autocomplete="username" required>
     <input id="lg-pw" type="password" placeholder="비밀번호" autocomplete="current-password" required>
     <button type="submit" id="lg-btn">로그인</button>
@@ -604,9 +604,9 @@ const SLEEPLAT=['짧음','중간','김'];
 }
 /* ───── 6. 카페인 ───── */
 {
-  const a=mkQ('오늘 커피를 섭취하셨나요?',null);
+  const a=mkQ('오늘 카페인을 섭취하셨나요?',null);
   const b=mkQ('종류','무엇을 마셨나요?');P.cafKind=Badges(b.body,{items:['커피','에너지음료','영양제','기타'],rows:1,def:[0]});
-  const c=mkQ('잔 수','몇 잔 마셨나요?');P.cafCups=Count(c.body,{items:Array.from({length:10},(_,i)=>String(i+1)),index:0,unit:'잔'});
+  const c=mkQ('잔 수','얼마나 마셨나요?');P.cafCups=Count(c.body,{items:Array.from({length:10},(_,i)=>String(i+1)),index:0,unit:'잔'});
   const d=optTime('섭취 시작','처음 섭취를 시작한 시간은 몇 시 경인가요?',{ap:'AM',hour:8,minuteFixed:true});
   const e=optTime('섭취 종료','섭취를 완료한 시간은 몇 시 경인가요?',{ap:'AM',hour:8,minuteFixed:true});
   P.cafStart=d.tp;P.cafEnd=e.tp;
@@ -634,7 +634,7 @@ const SLEEPLAT=['짧음','중간','김'];
   const b=mkQ('시험',null);P.exam=Choice(b.body,{labels:['여유','임박','시험'],index:lastIdx('exam',3,0),captions:['여유','시험 임박','시험']});
   const c=mkQ('일정 강도','오늘 일정은 어땠나요?');
   P.load=Choice(c.body,{labels:['1','2','3','4','5'],track:true,index:1,captions:['1 · 여유로운 날','2 · 평범한 날','3 · 일정이 있는 날','4 · 바쁜 날','5 · 아주 긴 하루']});
-  const d=mkQ('기타',null);const ta=el('textarea','ta');ta.placeholder='특이사항이 있다면 적어 주세요';d.body.append(ta);P.note=ta;
+  const d=mkQ('기타',null);const ta=el('textarea','ta');ta.placeholder='비고';d.body.append(ta);P.note=ta;
   const foot=el('div','foot','<p>오늘 하루도 수고하셨어요! 안녕히 주무세요</p>');
   const chk=el('button','chk','<span class="box"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3.2L13 4.5"/></svg></span><span>지금 바로 취침</span>');
   chk.type='button';P.sleepNow=true;chk.classList.add('on');
@@ -762,7 +762,7 @@ nextBtn.onclick=()=>{
   buzz(10);
   if(finished){location.href=location.pathname;return}
   if(seq[si]===3&&!warned&&!P.natural.touched&&!P.final.touched){
-    warned=true;toast('눈이 떠진 시각이나 기상 시각 중 하나는 알려 주세요. 그래야 수면 시간을 계산할 수 있어요.');
+    warned=true;toast('눈이 떠진 시각 또는 기상 시각 중 하나 이상을 입력하세요.');
     const sc=$('.scroll',pages[3].pg);sc.scrollTo({top:sc.scrollHeight,behavior:'smooth'});return;
   }
   if(si===seq.length-1){finish();return}

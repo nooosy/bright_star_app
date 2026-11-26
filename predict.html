@@ -47,6 +47,7 @@ svg .v{fill:#e6eaff;font-weight:700}
 .eff{list-style:none;margin:0 4px}
 .eff li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:600;color:#e6eaff}
 .eff li:last-child{border-bottom:0}
+.eff li.rej{color:var(--sub)}.eff li.rej span{font-size:12px}
 .eff b.p{color:#7be0a6}.eff b.m{color:var(--hi)}
 .tabs{position:absolute;left:0;right:0;bottom:0;height:84px;display:flex;z-index:6;border-top:1px solid rgba(255,255,255,.18);background:rgba(15,15,25,.6);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding-bottom:12px;color:var(--sub);font-size:12px;font-weight:700;text-decoration:none}
@@ -132,7 +133,7 @@ function logicalDay(r){
   return keyOf(new Date(+new Date(r.saved)-5*3600e3));
 }
 function buildDays(list,now=new Date()){
-  const days=new Map();
+  const days=new Map();days._list=list;
   const get=k=>{if(!days.has(k))days.set(k,{key:k,sleep:null,sum:null});return days.get(k)};
   list.filter(r=>r&&r.saved&&r.fatigue).forEach(r=>{const e=get(logicalDay(r));if(!e.sum||String(r.saved)>String(e.sum.saved))e.sum=r});
   dedupeSleep(list).map(analyze).filter(a=>a&&a.wake<=now).forEach(a=>{
@@ -159,19 +160,38 @@ const FEAT=[
   {id:'prevLoad',short:'일정 강도',label:'전날 일정 강도 1단계 높을 때',unit:1},
   {id:'latency', short:'잠들기',label:'잠드는 데 1단계 더 오래 걸릴 때',unit:1},
   {id:'awak',    short:'밤중 깸',label:'밤중에 1번 더 깰 때',unit:1},
-  {id:'weekend', short:'주말',label:'주말',unit:1},
-  {id:'exam',    short:'시험',label:'시험 임박·시험 기간',unit:1}
+  /* ── 상황 변수 (ctx): 자동 선택 대상이 아니라 항상 넣되, 규제로 눌러서 기록이 적으면 효과를 0 쪽으로 ── */
+  {id:'cDorm', ctx:1,short:'기숙사',     label:'기숙사에서 잘 때',unit:1,base:'집'},
+  {id:'cNear', ctx:1,short:'시험 임박',  label:'시험 임박',unit:1,base:'여유'},
+  {id:'cExam', ctx:1,short:'시험',       label:'시험 (당일·기간)',unit:1,base:'여유'},
+  {id:'cOff',  ctx:1,short:'주말·공휴일',label:'주말·공휴일',unit:1,base:'학기 중 평일'},
+  {id:'cVac',  ctx:1,short:'방학',       label:'방학',unit:1,base:'학기 중'},
+  {id:'cEvent',ctx:1,short:'학교 행사',  label:'학교 행사',unit:1,base:'평소'},
+  {id:'cLoad', ctx:1,short:'일정 강도',  label:'그날 일정 강도 1단계 높을 때',unit:1}
 ];
+const CTX=FEAT.map((f,i)=>f.ctx?i:-1).filter(i=>i>=0);
 const FIDX=Object.fromEntries(FEAT.map((f,i)=>[f.id,i]));
 const S7=7; // 곡선 항의 중심(시간). (수면-7)² 로 넣어 수면 시간과의 상관을 줄임
 
-/* 하루 d의 컨디션(=정답 y): 기상 직후·아침·오후·저녁 피로(1 개운 ~ 5 피곤)의 평균 */
-function targetOf(sum){
+/* 정답(y) 두 가지: 피로(1 개운 ~ 5 피곤)의 평균
+   am = 아침 컨디션 (기상 직후·아침) → 밤잠의 영향이 가장 직접적
+   pm = 낮 컨디션 (오후·저녁)        → 밤잠 + 그날 일정의 영향 */
+const TGT={am:{name:'아침 컨디션',keys:['wake','morning'],desc:'기상 직후·아침 피로'},
+           pm:{name:'낮 컨디션',keys:['afternoon','evening'],desc:'오후·저녁 피로'}};
+function targetOf(sum,t){
   const f=sum&&sum.fatigue;if(!f)return NaN;
-  return mean(['wake','morning','afternoon','evening'].map(k=>f[k]>0?f[k]:null));
+  return mean(TGT[t].keys.map(k=>f[k]>0?f[k]:null));
 }
 /* 하루 d의 특성. sleep = {bedH, sleepH} (실측 또는 가정값), d-1 이전 기록은 days에서 찾음 */
-function featuresFor(days,k,sleep,{weekend,examFrom}={}){
+/* 잠든 장소: 그 수면 기록에 없으면 '지금 바로 취침'으로 함께 저장된 기록에서 찾음 */
+function placeOf(r,days){
+  if(!r)return null;if(r.place)return r.place;
+  const bt=+new Date(r.bedTime),o=(days._list||[]).find(o=>o.place&&Math.abs(+new Date(o.saved)-bt)<15000);
+  return o?o.place:null;
+}
+const isNear=e=>e==='임박'||e==='시험 임박';
+/* ctx: 추천할 때 '내일 상황'을 직접 넣는 값 {place, exam, type, load} */
+function featuresFor(days,k,sleep,ctx=null){
   const prevDays=n=>Array.from({length:n},(_,i)=>days.get(shiftKey(k,-(i+1)))).filter(Boolean);
   const ps=prevDays(7).filter(e=>e.sleep);
   const p3=prevDays(3).filter(e=>e.sleep).map(e=>e.sleep.min/60);
@@ -182,7 +202,11 @@ function featuresFor(days,k,sleep,{weekend,examFrom}={}){
   const cafH=caf&&caf.cups?Math.max(parseHr(caf.end)??-1,parseHr(caf.start)??-1):-1;
   const ex=ys&&ys.exercise;
   const [Y,M,D]=k.split('-').map(Number),wd=new Date(Y,M-1,D).getDay();
-  const ex_=examFrom!==undefined?examFrom:(ts&&ts.day&&ts.day.exam);
+  const dd=ts&&ts.day;
+  const place=ctx?ctx.place:placeOf(tr,days);
+  const exam=ctx?ctx.exam:(dd&&dd.exam);
+  const types=ctx?[ctx.type]:(dd&&Array.isArray(dd.type)&&dd.type.length?dd.type:null);
+  const load=ctx?ctx.load:(dd&&dd.load);
   const x=new Array(FEAT.length).fill(NaN);
   x[FIDX.sleepH]=sleep.sleepH;
   x[FIDX.sleepH2]=(sleep.sleepH-S7)**2;
@@ -196,15 +220,20 @@ function featuresFor(days,k,sleep,{weekend,examFrom}={}){
   x[FIDX.prevLoad]=ys&&ys.day&&ys.day.load?ys.day.load:NaN;
   x[FIDX.latency]=sleep.latency!==undefined?sleep.latency:(tr&&LAT[tr.latency]!=null?LAT[tr.latency]:NaN);
   x[FIDX.awak]=sleep.awak!==undefined?sleep.awak:(tr&&tr.awakenings!=null?tr.awakenings:NaN);
-  x[FIDX.weekend]=weekend!==undefined?weekend:((wd===0||wd===6)?1:0);
-  x[FIDX.exam]=ex_?(ex_==='여유'?0:1):NaN;
+  x[FIDX.cDorm]=place==='기숙사'?1:place==='집'?0:NaN;           // '기타' 장소는 중립(평균)으로
+  x[FIDX.cNear]=exam?(isNear(exam)?1:0):NaN;
+  x[FIDX.cExam]=exam?(exam==='시험'?1:0):NaN;
+  x[FIDX.cOff]=types?(types.includes('주말')||types.includes('공휴일')?1:0):((wd===0||wd===6)?1:0);
+  x[FIDX.cVac]=types?(types.includes('방학')?1:0):NaN;
+  x[FIDX.cEvent]=types?(types.includes('학교 행사')?1:0):NaN;
+  x[FIDX.cLoad]=load>0?load:NaN;
   return x;
 }
 function buildDataset(list,now=new Date()){
   const days=buildDays(list,now),rows=[];
   [...days.values()].sort((a,b)=>a.key<b.key?-1:1).forEach(e=>{
     if(!e.sleep||!e.sum)return;
-    const y=targetOf(e.sum);if(isNaN(y))return;
+    const y={am:targetOf(e.sum,'am'),pm:targetOf(e.sum,'pm')};if(isNaN(y.am)&&isNaN(y.pm))return;
     rows.push({key:e.key,y,x:featuresFor(days,e.key,{sleepH:e.sleep.min/60,bedH:bedRel(e.sleep.bed)}),bed:e.sleep.bed,wake:e.sleep.wake});
   });
   return{days,rows};
@@ -221,15 +250,15 @@ function invert(A){
   }
   return M.map(r=>r.slice(n));
 }
-function fitRidge(X,y,cols,alpha){
+function fitRidge(X,y,cols0,alpha,ctx=[],alphaC=1){
+  const cols=[...cols0,...ctx],pens=[...cols0.map(()=>alpha),...ctx.map(()=>alphaC)];
   const n=y.length,p=cols.length;
   const mu=cols.map(j=>{const m=mean(X.map(r=>r[j]));return isNaN(m)?0:m});
   const sd=cols.map((j,c)=>{const v=X.map(r=>r[j]).filter(v=>!isNaN(v));if(v.length<2)return 1;
     const s=Math.sqrt(v.reduce((a,x)=>a+(x-mu[c])**2,0)/v.length);return s>1e-9?s:1});
   const z=x=>cols.map((j,c)=>isNaN(x[j])?0:(x[j]-mu[c])/sd[c]);
   const Z=X.map(z),ym=y.reduce((a,b)=>a+b,0)/n,yc=y.map(v=>v-ym);
-  const lam=alpha*n;
-  const A=Array.from({length:p},(_,i)=>Array.from({length:p},(_,k)=>Z.reduce((s,r)=>s+r[i]*r[k],0)+(i===k?lam:0)));
+  const A=Array.from({length:p},(_,i)=>Array.from({length:p},(_,k)=>Z.reduce((s,r)=>s+r[i]*r[k],0)+(i===k?pens[i]*n:0)));
   const Ai=p?invert(A):[];
   const b=Array.from({length:p},(_,i)=>Z.reduce((s,r,t)=>s+r[i]*yc[t],0));
   const w=Ai.map(r=>r.reduce((s,v,k)=>s+v*b[k],0));
@@ -239,54 +268,121 @@ function fitRidge(X,y,cols,alpha){
     let h=1/n;for(let a=0;a<p;a++)for(let c=0;c<p;c++)h+=zr[a]*Ai[a][c]*zr[c];
     return (y[i]-f(zr))/Math.max(1e-6,1-h);
   });
-  return{cols,alpha,w,mu,sd,ym,loo,predict:x=>f(z(x)),raw:w.map((v,j)=>v/sd[j])};
+  return{cols,nSel:cols0.length,alpha,alphaC,w,mu,sd,ym,loo,predict:x=>f(z(x)),raw:w.map((v,j)=>v/sd[j])};
 }
 const ALPHAS=[0.01,0.03,0.1,0.3,1,3,10];
-const SETS=[
-  [],                                                       // 평균만 (베이스라인도 후보에 포함 → 패턴이 없으면 정직하게 평균을 고름)
-  ['sleepH'],
-  ['sleepH','sleepH2'],
-  ['sleepH','bedH'],
-  ['sleepH','sleepH2','bedH'],
-  ['sleepH','sleepH2','bedH','bedDev','prev3'],
-  ['sleepH','sleepH2','bedH','bedDev','prev3','prevEve','prevCaf','cafLate','prevEx','prevLoad'],
-  FEAT.map(f=>f.id)
-].map(s=>s.map(id=>FIDX[id]));
 const absMean=a=>a.reduce((s,v)=>s+Math.abs(v),0)/a.length;
-/* 후보(특성 묶음 × 규제 강도) 중 LOO 평균절대오차가 가장 작은 것 선택 */
-function selectModel(X,y){
+const sqMean=a=>a.reduce((s,v)=>s+v*v,0)/a.length;
+
+/* ───── 변수 자동 선택 ─────
+   1) 기본 변수(수면 시간·곡선 항·취침 시각) 조합 중 하나를 고르고
+   2) 나머지 변수를 하나씩 넣어 보며, 예측 오차가 '우연 범위(1 표준오차)'보다 확실히 줄 때만 추가
+   3) 변수 개수 상한 = 데이터 일수 ÷ 5  (변수 1개당 최소 5일)
+   모든 비교는 LOO(하루씩 빼고 맞히기) 오차로 함.
+   ※ 가상 데이터 실험에서, 14개 변수를 제약 없이 고르는 방식보다 이 방식이 새 날을 더 정확히 맞혔음 */
+const CORE_IDS=['sleepH','sleepH2','bedH'];
+const SE_K=1;
+/* 정해진 변수 묶음에서 규제 강도 α를 LOO 제곱오차로 고름 */
+function bestAlpha(X,y,cols,ctx=[],aC=1){
   let best=null;
-  SETS.forEach((cols,si)=>{
-    (cols.length?ALPHAS:[1]).forEach(a=>{
-      const m=fitRidge(X,y,cols,a),mae=absMean(m.loo);
-      if(!best||mae<best.mae-1e-9)best={m,mae,si};
-    });
+  (cols.length?ALPHAS:[1]).forEach(a=>{
+    const m=fitRidge(X,y,cols,a,ctx,aC),mse=sqMean(m.loo);
+    if(!best||mse<best.mse-1e-12)best={m,mse};
   });
+  return{cols,...best};
+}
+/* 쓸 수 있는 변수인가: 절반 이상 기록돼 있고, 값이 변해야 함 */
+function okData(j,X){
+  const v=X.map(r=>r[j]).filter(v=>!isNaN(v));
+  if(v.length<Math.max(5,X.length*0.5))return false;
+  return Math.max(...v)-Math.min(...v)>1e-9;
+}
+/* 상황 변수: 예/아니오 변수는 양쪽 모두 2일 이상 있어야 배울 수 있음 */
+function okCtx(j,X){
+  const v=X.map(r=>r[j]).filter(v=>!isNaN(v));
+  if(v.length<4)return false;
+  if(FEAT[j].id==='cLoad')return Math.max(...v)-Math.min(...v)>1e-9;
+  const one=v.filter(a=>a===1).length;return one>=2&&v.length-one>=2;
+}
+const ALPHAS_C=[0.1,100];   // 상황 보정: 약하게 켬(0.1) 또는 사실상 끔(100). 가상 데이터 실험에서 이 방식이 가장 정확했음
+/* 상황 변수만 쓴 모델: 규제 강도를 LOO로 고르고, 평균값보다 못하면 상황 변수를 쓰지 않음 */
+function contextModel(X,y){
+  const ctx=CTX.filter(j=>okCtx(j,X)),m0=bestAlpha(X,y,[]);
+  let best={...m0,ctx:[],aC:1};
+  if(ctx.length)ALPHAS_C.forEach(aC=>{const m=fitRidge(X,y,[],1,ctx,aC),mse=sqMean(m.loo);if(mse<best.mse)best={cols:[],m,mse,ctx,aC}});
   return best;
 }
-/* 이중(nested) LOO: '모델 고르기'까지 포함해서 하루씩 빼고 예측 → 정직한 정확도 */
+const capFor=n=>Math.max(0,Math.min(FEAT.length,Math.floor(n/5)));
+/* a가 b보다 '우연 이상으로' 나은가: 날마다의 LOO 제곱오차 차이의 평균 > SE_K × 표준오차 */
+function clearlyBetter(a,b,n){
+  const d=a.m.loo.map((e,i)=>b.m.loo[i]**2-e*e);
+  const md=d.reduce((p,q)=>p+q,0)/n,se=Math.sqrt(d.reduce((p,v)=>p+(v-md)**2,0)/(n-1)/n);
+  return md>SE_K*se;
+}
+function selectModel(X,y){
+  const n=y.length,cap=capFor(n),[S,S2,B]=CORE_IDS.map(id=>FIDX[id]);
+  const cm=contextModel(X,y),ctx=CTX.filter(j=>okCtx(j,X)),aC=cm.ctx.length?cm.aC:100;   // 1) 상황 보정 먼저 (항상 포함)
+  const fit=c=>bestAlpha(X,y,c,ctx,aC);
+  const core=[[],[S],[B],[S,S2],[S,B],[S,S2,B]].filter(c=>c.length<=cap&&c.every(j=>okData(j,X)));
+  let cur=fit([]);
+  core.slice(1).map(fit).forEach(c=>{
+    if(c.cols.length>cur.cols.length?clearlyBetter(c,cur,n):c.mse<cur.mse)cur=c;
+  });
+  const steps=[{...cur,add:null}];let rejected=null;
+  while(cur.cols.length<cap){
+    let best=null;
+    FEAT.forEach((f,j)=>{
+      if(f.ctx||cur.cols.includes(j)||[S,S2,B].includes(j)||!okData(j,X))return;
+      const r=fit([...cur.cols,j]);
+      if(!best||r.mse<best.mse)best={...r,add:j};
+    });
+    if(!best)break;
+    if(!clearlyBetter(best,cur,n)){rejected=best;break}
+    cur=best;steps.push(best);
+  }
+  /* 마지막으로 고른 변수와 상황 보정의 규제 강도를 함께 다시 맞춤 (수면을 알고 나면 상황 효과가 더 잘 보일 수 있음) */
+  (cur.cols.length?ALPHAS:[1]).forEach(a=>ALPHAS_C.forEach(c=>{
+    if(!ctx.length)return;const m=fitRidge(X,y,cur.cols,a,ctx,c),mse=sqMean(m.loo);
+    if(mse<cur.mse-1e-12)cur={...cur,m,mse};
+  }));
+  return{m:cur.m,mse:cur.mse,cols:cur.cols,steps,rejected,cap,n,ctxModel:cm.m,ctx,base0:bestAlpha(X,y,[]).mse,ctxMse:cm.mse};
+}
+/* 이중(nested) LOO: '변수 고르기'까지 포함해서 하루씩 빼고 예측 → 정직한 정확도
+   + 각 변수가 몇 번 뽑혔는지 세서 '선택 안정성'으로 보여 줌 */
 function nestedLOO(rows){
-  const n=rows.length,preds=new Array(n),base=new Array(n);
-  const K=n>120?10:n;                                  // 기록이 아주 많아지면 연속 10묶음으로 (속도)
+  const n=rows.length,preds=new Array(n),base=new Array(n),cbase=new Array(n),picks=new Array(FEAT.length).fill(0);
+  const K=n>40?10:n;                                   // 기록이 많아지면 연속 10묶음으로 (속도)
   for(let f=0;f<K;f++){
     const lo=Math.floor(f*n/K),hi=Math.floor((f+1)*n/K);
     const tr=rows.filter((_,k)=>k<lo||k>=hi);
     const s=selectModel(tr.map(r=>r.x),tr.map(r=>r.y)),bm=tr.reduce((a,r)=>a+r.y,0)/tr.length;
-    for(let i=lo;i<hi;i++){preds[i]=s.m.predict(rows[i].x);base[i]=bm}
+    s.cols.forEach(j=>picks[j]++);
+    for(let i=lo;i<hi;i++){preds[i]=s.m.predict(rows[i].x);base[i]=bm;cbase[i]=s.ctxModel.predict(rows[i].x)}
   }
-  const err=preds.map((p,i)=>p-rows[i].y),berr=base.map((b,i)=>b-rows[i].y);
-  return{preds,mae:absMean(err),baseMae:absMean(berr),rmse:Math.sqrt(err.reduce((s,e)=>s+e*e,0)/n)};
+  return{...summarize(rows.map(r=>r.key),rows.map(r=>r.y),preds,base,cbase),picks,folds:K};
+}
+function summarize(keys,ys,preds,base,cbase){
+  const err=preds.map((p,i)=>p-ys[i]),berr=base.map((b,i)=>b-ys[i]),cerr=cbase.map((b,i)=>b-ys[i]);
+  return{keys,ys,preds,base,cbase,mae:absMean(err),baseMae:absMean(berr),ctxMae:absMean(cerr),rmse:Math.sqrt(sqMean(err))};
+}
+/* 아침·낮 두 예측을 합친 '둘 다' (같은 날끼리 평균) */
+function combineCV(a,b){
+  const mb=new Map(b.keys.map((k,i)=>[k,i])),keys=[],ys=[],preds=[],base=[],cbase=[];
+  a.keys.forEach((k,i)=>{const j=mb.get(k);if(j==null)return;
+    keys.push(k);ys.push((a.ys[i]+b.ys[j])/2);preds.push((a.preds[i]+b.preds[j])/2);base.push((a.base[i]+b.base[j])/2);cbase.push((a.cbase[i]+b.cbase[j])/2)});
+  return summarize(keys,ys,preds,base,cbase);
 }
 
 /* ───── 추천: 가능한 (취침, 기상) 조합을 모두 넣어 보고 예측 피로가 가장 낮은 것 ───── */
-function recommend(model,ds,{latestWake,fixedWake,now=new Date()}){
-  const R=ds.rows,step=0.25;
-  const bedLo=Math.min(...R.map(r=>bedRel(r.bed))),bedHi=Math.max(...R.map(r=>bedRel(r.bed)));
+function recommend(model,ds,{latestWake,fixedWake,ctx,now=new Date()}){
+  const step=0.25;
+  /* 취침 범위: 같은 장소에서 5일 이상 잤으면 그 장소의 기록 범위만 (기숙사 소등 등 현실 반영) */
+  const same=ds.rows.filter(r=>placeOf(ds.days.get(r.key).sleep.r,ds.days)===ctx.place);
+  const RB=same.length>=5?same:ds.rows,R=ds.rows;
+  const bedLo=Math.min(...RB.map(r=>bedRel(r.bed))),bedHi=Math.max(...RB.map(r=>bedRel(r.bed)));
   const wkLo=Math.min(...R.map(r=>hrs(r.wake))),wkHi=Math.max(...R.map(r=>hrs(r.wake)));
   const slLo=Math.min(...R.map(r=>r.x[FIDX.sleepH])),slHi=Math.max(...R.map(r=>r.x[FIDX.sleepH]));
   const todayK=keyOf(new Date(+now-5*3600e3)),tomK=shiftKey(todayK,1);
-  const [Y,M,D]=tomK.split('-').map(Number),wd=new Date(Y,M-1,D).getDay();
-  const tdy=ds.days.get(todayK),exam=tdy&&tdy.sum&&tdy.sum.day?tdy.sum.day.exam:undefined;
   const wakes=fixedWake?[latestWake]:[];
   if(!fixedWake)for(let w=Math.ceil(wkLo/step)*step;w<=Math.min(wkHi,latestWake)+1e-9;w+=step)wakes.push(w);
   const out=[];
@@ -294,12 +390,12 @@ function recommend(model,ds,{latestWake,fixedWake,now=new Date()}){
     for(let b=Math.ceil(bedLo/step)*step;b<=bedHi+1e-9;b+=step){
       const sl=6+w-b;                                  // (24+기상) - (18+취침)
       if(sl<slLo-1e-9||sl>slHi+1e-9)continue;           // 기록에 없던 수면 길이는 추천하지 않음 (외삽 금지)
-      const x=featuresFor(ds.days,tomK,{sleepH:sl,bedH:b,latency:NaN,awak:NaN},{weekend:(wd===0||wd===6)?1:0,examFrom:exam});
+      const x=featuresFor(ds.days,tomK,{sleepH:sl,bedH:b,latency:NaN,awak:NaN},ctx);
       out.push({bed:b,wake:w,sleep:sl,y:model.predict(x)});
     }
   });
   out.sort((a,b)=>a.y-b.y);
-  return{list:out,bedLo,bedHi,wkLo,wkHi,tomK};
+  return{list:out,bedLo,bedHi,wkLo,wkHi,tomK,samePlace:same.length>=5};
 }
 /*MODEL-END*/
 
@@ -335,38 +431,96 @@ function lineChart(host,{xs,series,band,xfmt,yfmt=v=>v,ylo,yhi,mark}){
   host.append(s);
 }
 
-let ALL=[],fixedWake=LS.get('sleep.pred.fixed',true),latestWake=LS.get('sleep.pred.wake',null);
+let ALL=[],fixedWake=LS.get('sleep.pred.fixed',true),latestWake=LS.get('sleep.pred.wake',null),tgt=LS.get('sleep.pred.tgt','both'),COMP=null;
+const PLACES=['집','기숙사','기타'],EXAMS=['여유','시험 임박','시험'],TYPES=['학기 중','주말','공휴일','학교 행사','방학','기타'];
+/* 내일 상황 기본값: 가장 최근 기록 기준 (날이 바뀌면 다시 계산) */
+function defaultCtx(ds,now=new Date()){
+  const todayK=keyOf(new Date(+now-5*3600e3)),tomK=shiftKey(todayK,1);
+  const ks=[...ds.days.keys()].sort().reverse();
+  const lastSum=ks.map(k=>ds.days.get(k).sum).find(Boolean),d=lastSum&&lastSum.day||{};
+  const lastSl=ks.map(k=>ds.days.get(k).sleep).find(Boolean);
+  const [Y,M,D]=tomK.split('-').map(Number),wd=new Date(Y,M-1,D).getDay();
+  const lt=Array.isArray(d.type)?d.type:[];
+  return{day:todayK,place:placeOf(lastSl&&lastSl.r,ds.days)||'집',exam:isNear(d.exam)?'시험 임박':(d.exam||'여유'),
+    type:(wd===0||wd===6)?'주말':lt.includes('방학')?'방학':'학기 중',load:d.load||3};
+}
+let CTXSEL=null;
+const fname=j=>FEAT[j].id==='sleepH2'?'수면 시간 곡선':FEAT[j].short;
+const pts=v=>(v*25).toFixed(1);
+/* 데이터가 바뀔 때만 무거운 계산 (타깃 버튼을 눌러도 다시 계산하지 않음) */
+function compute(){
+  const ds=buildDataset(ALL),out={ds,t:{}};
+  ['am','pm'].forEach(t=>{
+    const rows=ds.rows.filter(r=>!isNaN(r.y[t])).map(r=>({...r,y:r.y[t]}));
+    if(rows.length<8)return;
+    out.t[t]={rows,sel:selectModel(rows.map(r=>r.x),rows.map(r=>r.y)),cv:nestedLOO(rows)};
+  });
+  if(out.t.am&&out.t.pm)out.both=combineCV(out.t.am.cv,out.t.pm.cv);
+  return out;
+}
+function effectsHTML(model,R){
+  let items='';
+  const raw=j=>{const c=model.cols.indexOf(j);return c<0?null:model.raw[c]};
+  const b1=raw(FIDX.sleepH),b2=raw(FIDX.sleepH2);
+  if(b1!=null){
+    const lo=Math.min(...R.map(r=>r.x[FIDX.sleepH])),hi=Math.max(...R.map(r=>r.x[FIDX.sleepH]));
+    if(b2!=null&&b2>1e-6){const opt=S7-b1/(2*b2);
+      items+=`<li><span>컨디션이 가장 좋은 수면 시간</span><b>${opt<lo?dur(lo)+' 이하 (기록 범위 끝)':opt>hi?dur(hi)+' 이상 (기록 범위 끝)':dur(opt)}</b></li>`}
+    else{const v=-25*(b1+(b2||0)*(2*(mean(R.map(r=>r.x[FIDX.sleepH]))-S7)));items+=`<li><span>평균 근처에서 수면 1시간 늘 때</span><b class="${v>=0?'p':'m'}">${v>=0?'+':''}${v.toFixed(1)}점</b></li>`}
+  }
+  model.cols.forEach((j,c)=>{
+    const f=FEAT[j];if(!f.unit||f.ctx)return;
+    const v=-25*model.raw[c]*f.unit;if(Math.abs(v)<0.5)return;
+    items+=`<li><span>${f.label}</span><b class="${v>=0?'p':'m'}">${v>=0?'+':''}${v.toFixed(1)}점</b></li>`;
+  });
+  return items?`<ul class="eff">${items}</ul>`:'<div class="empty" style="padding:20px 0">아직 뚜렷한 요인이 없어요</div>';
+}
 function render(){
   const host=$('#sections');host.innerHTML='';
-  const ds=buildDataset(ALL),R=ds.rows,n=R.length;
+  if(!COMP)COMP=compute();
+  const {ds,t:M}=COMP,n=ds.rows.length;
   $('#date').textContent=`학습에 쓸 수 있는 날 ${n}일`;
-  if(n<8){host.append(el('div','card',`<div class="empty">수면 기록과 하루 기분이 함께 있는 날이<br>8일 이상 쌓이면 예측을 시작해요. (현재 ${n}일)</div>`));return}
+  const avail=['am','pm'].filter(t=>M[t]);
+  if(!avail.length){host.append(el('div','card',`<div class="empty">수면 기록과 하루 기분이 함께 있는 날이<br>8일 이상 쌓이면 예측을 시작해요. (현재 ${n}일)</div>`));return}
+  if(tgt==='both'&&!COMP.both)tgt=avail[0];
+  if(tgt!=='both'&&!M[tgt])tgt=avail[0];
+  const used=tgt==='both'?['am','pm']:[tgt];
+  const model=tgt==='both'?{predict:x=>(M.am.sel.m.predict(x)+M.pm.sel.m.predict(x))/2}:M[tgt].sel.m;
+  const cv=tgt==='both'?COMP.both:M[tgt].cv;
+  const tName=tgt==='both'?'하루 컨디션 (아침·낮 평균)':TGT[tgt].name;
+  const skill=1-cv.mae/cv.baseMae,useful=skill>0&&used.some(t=>M[t].sel.cols.length);
+  if(!CTXSEL){const sv=LS.get('sleep.pred.ctx',null),df=defaultCtx(ds);CTXSEL=sv&&sv.day===df.day?sv:df}
+  if(latestWake==null){const w=ds.rows.map(r=>hrs(r.wake)).sort((a,b)=>a-b);latestWake=Math.round(w[Math.floor(w.length/2)]*4)/4}
 
-  const X=R.map(r=>r.x),Y=R.map(r=>r.y);
-  const sel=selectModel(X,Y),model=sel.m;
-  const cv=nestedLOO(R);
-  const skill=1-cv.mae/cv.baseMae,useful=skill>0&&sel.si>0;
-  if(latestWake==null){const w=R.map(r=>hrs(r.wake)).sort((a,b)=>a-b);latestWake=Math.round(w[Math.floor(w.length/2)]*4)/4}
+  /* 0. 무엇을 예측할지 */
+  const c0=el('div','chips');c0.style.margin='0 0 20px';
+  [['am','아침 컨디션'],['pm','낮 컨디션'],['both','둘 다']].forEach(([k,lb])=>{
+    const ok=k==='both'?!!COMP.both:!!M[k];if(!ok)return;
+    const b=el('button',k===tgt?'on':'',lb);b.type='button';b.onclick=()=>{tgt=k;LS.set('sleep.pred.tgt',k);render()};c0.append(b);
+  });
+  host.append(c0);
 
   /* 1. 추천 */
   const c1=el('div','card');
-  c1.innerHTML=`<div class="ct">오늘 밤 추천</div><div class="cs">기록된 범위 안에서 내일 컨디션이 가장 좋을 것으로 예측되는 시각이에요.</div>
+  c1.innerHTML=`<div class="ct">오늘 밤 추천</div><div class="cs">기록된 범위 안에서 내일 <b style="color:#e6eaff">${tName}</b>이 가장 좋을 것으로 예측되는 시각이에요.</div>
     <div class="row"><label for="wk">${fixedWake?'내일 기상 시각':'늦어도 이 시각엔 기상'}</label><input id="wk" type="time" step="900" value="${clock(latestWake)}"></div>
     <div class="chips" style="margin:0 4px 16px"><button type="button" data-f="1" class="${fixedWake?'on':''}">기상 시각 고정</button><button type="button" data-f="0" class="${fixedWake?'':'on'}">기상 시각도 추천</button></div>
+    <div class="ctxsel"></div>
     <div class="res"></div>`;
   host.append(c1);
   const c2=el('div','card');
-  c2.innerHTML=`<div class="ct">취침 시각별 예상 컨디션</div><div class="cs">선은 예측값, 띠는 평소 오차 범위(±1 RMSE). 주황 점이 추천 시각.</div><div class="h"></div>`;
+  c2.innerHTML=`<div class="ct">취침 시각별 예상 ${tName}</div><div class="cs">선은 예측값, 띠는 평소 오차 범위(±1 RMSE). 주황 점이 추천 시각.</div><div class="h"></div>`;
   host.append(c2);
   const drawRec=()=>{
-    const rec=recommend(model,ds,{latestWake,fixedWake}),res=$('.res',c1);
+    const rec=recommend(model,ds,{latestWake,fixedWake,ctx:CTXSEL}),res=$('.res',c1);
     if(!rec.list.length){res.innerHTML=`<div class="note warn">이 기상 시각으로는 기록된 수면 길이 범위 안의 조합이 없어요. 기상 시각을 바꿔 보세요.</div>`;$('.h',c2).innerHTML='<div class="empty">표시할 조합 없음</div>';return}
     const b=rec.list[0],tol=Math.max(0.04,cv.rmse*0.25);
     const near=rec.list.filter(r=>r.wake===b.wake&&r.y<=b.y+tol).map(r=>r.bed);
     const nLo=Math.min(...near),nHi=Math.max(...near);
     res.innerHTML=`<div class="big"><div><span>취침</span><b>${bedClock(b.bed)}</b></div><div><span>기상</span><b>${clock(b.wake)}</b></div>
-      <div class="wide"><div><span>예상 컨디션</span><b>${score(b.y)}점 <small style="font-size:14px;color:#9aa3c0">±${Math.round(cv.rmse*25)}</small></b></div><div style="text-align:right"><span>수면</span><b style="font-size:18px">${dur(b.sleep)}</b></div></div></div>
+      <div class="wide"><div><span>예상 ${tName.split(' (')[0]}</span><b>${score(b.y)}점 <small style="font-size:14px;color:#9aa3c0">±${Math.round(cv.rmse*25)}</small></b></div><div style="text-align:right"><span>수면</span><b style="font-size:18px">${dur(b.sleep)}</b></div></div></div>
       <div class="note">${nLo<nHi?`${bedClock(nLo)}~${bedClock(nHi)} 사이에 자면 예측 차이가 거의 없어요 (오차보다 작음).<br>`:''}
+      ${rec.samePlace?`취침 시각은 '${CTXSEL.place}'에서 실제로 잤던 범위 안에서만 골랐어요.<br>`:''}
       ${useful?'':'<span class="warn">⚠︎ 아직 수면 패턴으로 컨디션을 맞히는 실력이 평균값보다 낫지 않아요. 참고용으로만 보세요.</span>'}</div>`;
     const curve=rec.list.filter(r=>r.wake===b.wake).sort((p,q)=>p.bed-q.bed);
     const ys=curve.map(r=>score(r.y)),e=cv.rmse*25;
@@ -375,48 +529,91 @@ function render(){
   };
   $('#wk',c1).onchange=ev=>{const [h,m]=ev.target.value.split(':').map(Number);if(!isNaN(h)){latestWake=h+m/60;LS.set('sleep.pred.wake',latestWake);drawRec()}};
   c1.querySelectorAll('.chips button').forEach(bt=>bt.onclick=()=>{fixedWake=bt.dataset.f==='1';LS.set('sleep.pred.fixed',fixedWake);render()});
+  /* 내일 상황 고르기 → 다시 학습하지 않고 추천만 다시 계산 */
+  const cs=$('.ctxsel',c1);
+  [['place','오늘 밤 잘 곳',PLACES],['exam','내일 시험',EXAMS],['type','내일은',TYPES],['load','내일 일정 강도',[1,2,3,4,5]]].forEach(([key,lb,opts])=>{
+    cs.append(el('div','flabel',lb));
+    const row=el('div','chips');row.style.margin='0 4px 14px';
+    opts.forEach(o=>{const b=el('button',CTXSEL[key]===o?'on':'',String(o));b.type='button';
+      b.onclick=()=>{CTXSEL[key]=o;LS.set('sleep.pred.ctx',CTXSEL);row.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));drawRec()};row.append(b)});
+    cs.append(row);
+  });
   drawRec();
 
   /* 3. 정확도 */
+  const line=(lb,c)=>{const s=1-c.mae/c.baseMae;return `<li><span>${lb}</span><b class="${s>0?'p':'m'}">±${pts(c.mae)}점 · ${s>0?'+':''}${Math.round(s*100)}%</b></li>`};
   const c3=el('div','card');
-  c3.innerHTML=`<div class="ct">예측 정확도</div><div class="cs">하루씩 빼고 나머지로 모델을 고르고 학습한 뒤 그 하루를 맞혀 본 결과예요(이중 LOO). 한 번도 보지 못한 날을 맞힌 오차라서 정직한 값이에요.</div>
+  c3.innerHTML=`<div class="ct">예측 정확도</div><div class="cs">하루씩 빼고 나머지로 <b style="color:#e6eaff">변수 고르기부터 학습까지</b> 다시 한 뒤 그 하루를 맞혀 본 결과예요(이중 LOO). 한 번도 보지 못한 날을 맞힌 오차라서 정직한 값이에요.</div>
    <div class="sgrid" style="margin:0 0 14px">
-    <div class="stat"><span>평균 오차</span><b>±${(cv.mae*25).toFixed(1)}점</b></div>
-    <div class="stat"><span>평균값만 썼을 때</span><b>±${(cv.baseMae*25).toFixed(1)}점</b></div>
+    <div class="stat"><span>평균 오차</span><b>±${pts(cv.mae)}점</b></div>
+    <div class="stat"><span>평균값만 썼을 때</span><b>±${pts(cv.baseMae)}점</b></div>
+    <div class="stat" style="grid-column:1/3"><span>상황 정보만 썼을 때 <small>(장소·시험·날 종류·일정 강도)</small></span><b>±${pts(cv.ctxMae)}점</b><small>${cv.mae<cv.ctxMae?`수면 정보가 오차를 ${Math.round((1-cv.mae/cv.ctxMae)*100)}% 더 줄였어요`:'아직 수면 정보가 상황 정보보다 더 알려 주는 게 없어요'}</small></div>
     <div class="stat" style="grid-column:1/3"><span>평균값 대비 개선</span><b class="${skill>0?'':'warn'}">${skill>0?'+':''}${Math.round(skill*100)}%</b></div>
    </div>
-   <div class="note">선택된 모델: ${sel.si===0?'평균값 (아직 뚜렷한 패턴 없음)':[...new Set(SETS[sel.si].map(j=>FEAT[j].short))].join(' · ')+` (규제 α=${model.alpha})`}</div>`;
+   <div class="flabel" style="margin:4px 4px 0">예측 대상별 비교 (평균 오차 · 개선)</div>
+   <ul class="eff">${M.am?line('아침 컨디션',M.am.cv):''}${M.pm?line('낮 컨디션',M.pm.cv):''}${COMP.both?line('둘 다 (평균)',COMP.both):''}</ul>`;
   host.append(c3);
+
+  /* 3-2. 자동으로 고른 변수 */
+  const c6=el('div','card');
+  let h6=`<div class="ct">자동으로 고른 변수</div><div class="cs">변수를 하나씩 넣어 보며, 예측 오차가 <b style="color:#e6eaff">우연으로 볼 수 없을 만큼</b>(1 표준오차 이상) 줄어들 때만 남겨요. 변수 1개당 기록 5일이 필요해서, 데이터가 늘면 쓸 수 있는 변수도 늘어나요.</div>`;
+  used.forEach(t=>{
+    const s=M[t].sel,cvT=M[t].cv;
+    h6+=`<div class="flabel" style="margin:6px 4px 2px">${TGT[t].name} · ${s.n}일 → 최대 ${s.cap}개 중 <b style="color:#fff">${s.cols.length}개</b> 선택</div>
+      <div class="note" style="margin:0 4px 4px;color:var(--sub)">상황 보정(항상 포함): ${s.ctx.length?s.ctx.map(j=>FEAT[j].short).join(' · ')+(s.m.alphaC>=100?' — 단, 아직 차이가 뚜렷하지 않아 거의 0으로 눌러 둠':''):'없음 — 양쪽 상황 기록이 각각 2일 이상 필요해요'}</div><ul class="eff steps">`;
+    s.steps.forEach((st,i)=>{
+      const nm=i===0?(st.cols.length?'기본: '+st.cols.map(fname).join(' · '):'기본: 없음 (평균값)'):'+ '+fname(st.add);
+      h6+=`<li><span>${nm}</span><b>±${pts(Math.sqrt(st.mse))}점</b></li>`;
+    });
+    if(s.rejected)h6+=`<li class="rej"><span>✕ 다음 후보 ${fname(s.rejected.add)} — ${s.rejected.mse<s.mse?'줄어든 오차가 우연 범위 안':'오차가 줄지 않음'}</span><b>±${pts(Math.sqrt(s.rejected.mse))}점</b></li>`;
+    else if(s.cols.length>=s.cap&&s.cap<FEAT.length)h6+=`<li class="rej"><span>— 상한(${s.cap}개)에 도달. 기록이 더 쌓이면 더 시험해요</span><b></b></li>`;
+    h6+=`</ul>`;
+    const st=FEAT.map((f,j)=>({j,c:cvT.picks[j]})).filter(o=>o.c>0).sort((a,b)=>b.c-a.c);
+    h6+=`<div class="note" style="margin:6px 4px 16px">선택 안정성 (하루씩 빼고 ${cvT.folds}번 다시 골랐을 때): ${st.length?st.map(o=>`${fname(o.j)} ${Math.round(o.c/cvT.folds*100)}%`).join(' · '):'매번 평균값'}</div>`;
+  });
+  h6+=`<div class="note" style="color:var(--sub)">오차는 이 데이터 안에서 하루씩 빼고 맞힌 값(RMSE)이에요. 안정성이 낮은 변수는 데이터가 조금만 바뀌어도 빠질 수 있다는 뜻이에요.</div>`;
+  c6.innerHTML=h6;host.append(c6);
 
   /* 4. 예측 vs 실제 */
   const c4=el('div','card');
-  c4.innerHTML=`<div class="ct">예측 vs 실제</div><div class="cs">각 날을 빼고 학습했을 때의 예측(보라)과 실제 컨디션(파랑).</div><div class="h"></div><div class="legend"><span><i style="background:#6fb4ff"></i>실제</span><span><i style="background:#b78cff"></i>예측</span></div>`;
+  c4.innerHTML=`<div class="ct">예측 vs 실제</div><div class="cs">각 날을 빼고 학습했을 때의 예측(보라)과 실제 ${tName}(파랑).</div><div class="h"></div><div class="legend"><span><i style="background:#6fb4ff"></i>실제</span><span><i style="background:#b78cff"></i>예측</span></div>`;
   host.append(c4);
-  const act=R.map(r=>score(r.y)),pr=cv.preds.map(score);
-  lineChart($('.h',c4),{xs:R.map(r=>r.key),series:[{y:act,color:'#6fb4ff',dots:true},{y:pr,color:'#b78cff',dots:true}],xfmt:k=>{const [,M,D]=k.split('-');return +M+'/'+(+D)},
+  const act=cv.ys.map(score),pr=cv.preds.map(score);
+  lineChart($('.h',c4),{xs:cv.keys,series:[{y:act,color:'#6fb4ff',dots:true},{y:pr,color:'#b78cff',dots:true}],xfmt:k=>{const [,Mo,D]=k.split('-');return +Mo+'/'+(+D)},
     ylo:Math.max(0,Math.floor((Math.min(...act,...pr)-5)/10)*10),yhi:Math.min(100,Math.ceil((Math.max(...act,...pr)+5)/10)*10)});
+
+  /* 4-2. 상황별 차이 */
+  const c7=el('div','card');
+  const R0=ds.rows,grp=[
+    ['잘 곳',[['집',r=>r.x[FIDX.cDorm]===0],['기숙사',r=>r.x[FIDX.cDorm]===1,'cDorm']]],
+    ['시험',[['여유',r=>r.x[FIDX.cNear]===0&&r.x[FIDX.cExam]===0],['시험 임박',r=>r.x[FIDX.cNear]===1,'cNear'],['시험',r=>r.x[FIDX.cExam]===1,'cExam']]],
+    ['날 종류',[['평일·학기 중',r=>r.x[FIDX.cOff]===0&&r.x[FIDX.cVac]!==1&&r.x[FIDX.cEvent]!==1],['주말·공휴일',r=>r.x[FIDX.cOff]===1,'cOff'],['방학',r=>r.x[FIDX.cVac]===1,'cVac'],['학교 행사',r=>r.x[FIDX.cEvent]===1,'cEvent']]]];
+  const yOf=r=>tgt==='both'?mean([r.y.am,r.y.pm]):r.y[tgt];
+  const eff=id=>{const j=FIDX[id];const vs=used.map(t=>{const m=M[t].sel.m,c=m.cols.indexOf(j);return c<0?null:-25*m.raw[c]});
+    return vs.every(v=>v==null)?null:vs.reduce((a,b)=>a+(b||0),0)/vs.length};
+  let h7=`<div class="ct">상황별 차이</div><div class="cs">왼쪽 숫자는 그 상황에서 실제 평균 ${tName}, 오른쪽은 <b style="color:#e6eaff">수면이 같을 때</b> 기준 상황보다 몇 점 다른지(모델 추정)예요. 상황이 다르면 잠자는 시각도 달라지기 때문에, 이렇게 나눠야 '늦게 자서'와 '시험이라서'를 구분할 수 있어요.</div>`;
+  grp.forEach(([gl,items])=>{
+    h7+=`<div class="flabel" style="margin:6px 4px 0">${gl}</div><ul class="eff">`;
+    items.forEach(([lb,fn,id])=>{
+      const rs=R0.filter(fn),ys=rs.map(yOf).filter(v=>!isNaN(v));if(!rs.length)return;
+      const e=id?eff(id):null;
+      const right=!id?'기준':rs.length<2?'기록 부족':e==null?'차이 뚜렷하지 않음':`${e>=0?'+':''}${e.toFixed(1)}점`;
+      h7+=`<li><span>${lb} <small style="color:#9aa3c0">${rs.length}일 · 평균 ${ys.length?score(mean(ys)):'-'}점</small></span><b class="${e==null?'':e>=0?'p':'m'}">${right}</b></li>`;
+    });
+    h7+='</ul>';
+  });
+  const le=eff('cLoad');
+  h7+=`<div class="flabel" style="margin:6px 4px 0">일정 강도</div><ul class="eff"><li><span>그날 일정 강도 1단계 높을 때</span><b class="${le==null?'':le>=0?'p':'m'}">${le==null?'차이 뚜렷하지 않음':`${le>=0?'+':''}${le.toFixed(1)}점`}</b></li></ul>`;
+  c7.innerHTML=h7;host.append(c7);
 
   /* 5. 영향 요인 */
   const c5=el('div','card');
-  let items='';
-  const raw=j=>{const c=model.cols.indexOf(j);return c<0?null:model.raw[c]};
-  const b1=raw(FIDX.sleepH),b2=raw(FIDX.sleepH2);
-  if(b1!=null){
-    if(b2!=null&&b2>1e-6){const opt=S7-b1/(2*b2);
-      const lo=Math.min(...R.map(r=>r.x[FIDX.sleepH])),hi=Math.max(...R.map(r=>r.x[FIDX.sleepH]));
-      items+=`<li><span>컨디션이 가장 좋은 수면 시간</span><b>${opt<lo?'기록 범위보다 짧음':opt>hi?dur(hi)+' 이상 (기록 범위 끝)':dur(opt)}</b></li>`}
-    else{const v=-25*(b1+(b2||0)*(2*(mean(R.map(r=>r.x[FIDX.sleepH]))-S7)));items+=`<li><span>평균 근처에서 수면 1시간 늘 때</span><b class="${v>=0?'p':'m'}">${v>=0?'+':''}${v.toFixed(1)}점</b></li>`}
-  }
-  model.cols.forEach((j,c)=>{
-    const f=FEAT[j];if(!f.unit)return;
-    const v=-25*model.raw[c]*f.unit;if(Math.abs(v)<0.5)return;
-    items+=`<li><span>${f.label}</span><b class="${v>=0?'p':'m'}">${v>=0?'+':''}${v.toFixed(1)}점</b></li>`;
-  });
-  c5.innerHTML=`<div class="ct">무엇이 컨디션을 바꾸나</div><div class="cs">선택된 모델의 계수예요. 다른 조건이 같을 때의 차이이고, 기록이 적으면 크게 흔들릴 수 있어요. 인과관계가 아니라 '함께 나타난 경향'이에요.</div>${items?`<ul class="eff">${items}</ul>`:'<div class="empty">아직 뚜렷한 요인이 없어요</div>'}`;
+  c5.innerHTML=`<div class="ct">무엇이 컨디션을 바꾸나</div><div class="cs">선택된 변수의 효과예요. 다른 조건이 같을 때의 차이이고, 기록이 적으면 크게 흔들릴 수 있어요. 인과관계가 아니라 '함께 나타난 경향'이에요.</div>`+
+    used.map(t=>(used.length>1?`<div class="flabel" style="margin:6px 4px 0">${TGT[t].name}</div>`:'')+effectsHTML(M[t].sel.m,M[t].rows)).join('<div style="height:14px"></div>');
   host.append(c5);
 }
 ALL=collect(LS.get('sleep.cache',[]));render();
-load().then(r=>{if(r){ALL=r;render()}});
+load().then(r=>{if(r){ALL=r;COMP=null;render()}});
 </script>
 </body>
 </html>

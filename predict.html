@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#161520">
+<title>밝은 별.</title>
+<style>
+:root{--bg-top:#161520;--bg-bottom:#3271A6;--line:#7e7e7e;--sub:#7e7e7e;--spring:cubic-bezier(.34,1.56,.64,1);--hi:#ffb347;--c1:#6fb4ff;--c2:#b78cff}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#000;overscroll-behavior:none}
+body{display:flex;justify-content:center;color:#fff;font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.app{position:relative;width:428px;height:926px;max-height:100dvh;overflow:hidden;background:linear-gradient(180deg,var(--bg-top) 0%,var(--bg-top) 40%,var(--bg-bottom) 100%)}
+.view{position:absolute;inset:0 0 84px 0;padding:94px 21px 40px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.view::-webkit-scrollbar{display:none}
+h1{font-size:32px;line-height:1.2;font-weight:800;letter-spacing:-.5px;margin-bottom:8px}
+.date{font-size:14px;font-weight:600;color:#cfd6ee;margin:0 0 20px 2px}
+.chips{display:flex;gap:10px;margin:0 0 12px;flex-wrap:wrap}
+.chips button{height:32px;padding:0 16px;border:1.5px solid var(--line);border-radius:16px;font-size:13px;font-weight:700;color:var(--sub);transition:all .25s}
+.chips button.on{border-color:#fff;color:#fff}
+.flabel{font-size:12px;font-weight:600;color:#cfd6ee;margin:0 0 8px 2px}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px}
+.stat{border:1px solid rgba(255,255,255,.22);border-radius:18px;padding:18px;background:rgba(255,255,255,.04)}
+.stat span{font-size:12px;font-weight:600;color:#cfd6ee}
+.stat b{display:block;font-size:22px;font-weight:800;margin-top:8px;letter-spacing:-.3px}
+.stat small{font-size:11px;color:#9aa3c0;font-weight:600}
+.card{border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:20px 16px 18px;margin-bottom:28px;background:rgba(255,255,255,.04)}
+.ct{font-size:15px;font-weight:700;color:#fff;margin:0 4px 6px}
+.cs{font-size:12px;font-weight:600;color:var(--sub);margin:0 4px 20px;line-height:1.6}
+.empty{font-size:13px;font-weight:600;color:var(--sub);text-align:center;padding:44px 0;line-height:1.7}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:inherit;fill:#9aa3c0;font-size:10px;font-weight:600}
+svg .v{fill:#e6eaff;font-weight:700}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:14px 4px 0;font-size:12px;font-weight:600;color:#cfd6ee}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.row{display:flex;align-items:center;gap:12px;margin:0 4px 16px}
+.row label{font-size:13px;font-weight:700;color:#cfd6ee;flex:1}
+.row input[type=time]{height:40px;border:1.5px solid var(--line);border-radius:12px;background:rgba(255,255,255,.05);color:#fff;font:inherit;font-size:15px;font-weight:700;padding:0 12px;outline:0;color-scheme:dark}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 14px}
+.big div{border-radius:16px;padding:14px;background:rgba(255,255,255,.06)}
+.big span{font-size:12px;font-weight:600;color:#cfd6ee}
+.big b{display:block;font-size:26px;font-weight:800;margin-top:4px;letter-spacing:-.5px}
+.big .wide{grid-column:1/3;display:flex;justify-content:space-between;align-items:flex-end}
+.note{font-size:12px;font-weight:600;color:#cfd6ee;line-height:1.7;margin:0 4px}
+.warn{color:var(--hi)}
+.eff{list-style:none;margin:0 4px}
+.eff li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:600;color:#e6eaff}
+.eff li:last-child{border-bottom:0}
+.eff b.p{color:#7be0a6}.eff b.m{color:var(--hi)}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:84px;display:flex;z-index:6;border-top:1px solid rgba(255,255,255,.18);background:rgba(15,15,25,.6);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding-bottom:12px;color:var(--sub);font-size:12px;font-weight:700;text-decoration:none}
+.tab.on{color:#fff}
+.tab:active svg{transform:scale(.88)}
+.tab svg{width:26px;height:26px;transition:transform .25s var(--spring)}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="view">
+    <h1>예측</h1>
+    <p class="date" id="date">불러오는 중…</p>
+    <div id="sections"></div>
+  </div>
+  <nav class="tabs">
+    <a class="tab" id="tab-home" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>홈</a>
+    <a class="tab" href="stats.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>통계</a>
+    <a class="tab on" href="predict.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>예측</a>
+  </nav>
+</main>
+<script>
+const CFG_FALLBACK={url:'',key:'',table:'sleep_records'};
+const $=(s,r=document)=>r.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+const pad2=n=>String(n).padStart(2,'0');
+const LS={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const CFG=Object.assign({},CFG_FALLBACK,LS.get('sleep.cfg',{}));
+const ready=!!CFG.url&&!!CFG.key&&!CFG.url.includes('YOUR-PROJECT');
+const homeHref=(CFG.home&&CFG.home!=='./')?CFG.home:(CFG.home==='./'?'./':'index.html');
+$('#tab-home').href=homeHref;
+
+/* ───── 데이터 불러오기 (stats.html과 동일한 규칙) ───── */
+async function token(){
+  const a=LS.get('sleep.auth',null);if(!a)return null;
+  if(a.expires_at-60>Date.now()/1000)return a.access_token;
+  try{
+    const r=await fetch(`${CFG.url}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:{apikey:CFG.key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:a.refresh_token})});
+    if(!r.ok)return null;const j=await r.json();
+    LS.set('sleep.auth',{access_token:j.access_token,refresh_token:j.refresh_token,expires_at:Math.floor(Date.now()/1000)+(j.expires_in||3600)});
+    return j.access_token;
+  }catch(e){return null}
+}
+function collect(remote){
+  const m=new Map();[...(remote||[]),...LS.get('sleep.records',[])].forEach(r=>{if(r&&r.saved)m.set(r.saved,r)});return [...m.values()];
+}
+async function load(){
+  let remote=LS.get('sleep.cache',[]);
+  if(ready){
+    try{
+      const t=await token();
+      if(t){
+        const r=await fetch(`${CFG.url}/rest/v1/${CFG.table||'sleep_records'}?select=data&order=saved_at.desc&limit=1000`,{headers:{apikey:CFG.key,Authorization:'Bearer '+t}});
+        if(r.ok){remote=(await r.json()).map(x=>x.data).filter(Boolean);LS.set('sleep.cache',remote)}
+      }else if(!LS.get('sleep.auth',null)){location.replace(homeHref);return null}
+    }catch(e){console.warn('불러오기 실패',e)}
+  }
+  return collect(remote);
+}
+
+/*MODEL-START*/
+/* ───── 기록 → 하루 단위 (stats.html의 analyze / dedupeSleep / buildDays와 같은 규칙) ───── */
+const P2=n=>String(n).padStart(2,'0');
+const keyOf=d=>d.getFullYear()+'-'+P2(d.getMonth()+1)+'-'+P2(d.getDate());
+const shiftKey=(k,n)=>{const [Y,M,D]=k.split('-').map(Number);return keyOf(new Date(Y,M-1,D+n))};
+function analyze(r){
+  const w=r.finalWake||r.naturalWake;if(!w||!r.bedTime)return null;
+  const bed=new Date(r.bedTime),[h,mi]=w.split(':').map(Number);if(isNaN(h))return null;
+  const wk=new Date(bed);wk.setHours(h,isNaN(mi)?0:mi,0,0);if(wk<=bed)wk.setDate(wk.getDate()+1);
+  const min=Math.round((wk-bed)/60000);if(min<=0||min>=24*60)return null;
+  return{bed,wake:wk,min,r};
+}
+function dedupeSleep(list){
+  const T=x=>+new Date(x);
+  return list.filter(r=>{
+    if(!r||!r.saved)return false;
+    const sv=T(r.saved);
+    return !list.some(o=>o!==r&&o.bedTime&&T(o.bedTime)>=sv-1000&&T(o.bedTime)<=sv+10000&&o.awakenings!=null&&r.awakenings==null);
+  });
+}
+function logicalDay(r){
+  if(r.logicalDay)return r.logicalDay;
+  return keyOf(new Date(+new Date(r.saved)-5*3600e3));
+}
+function buildDays(list,now=new Date()){
+  const days=new Map();
+  const get=k=>{if(!days.has(k))days.set(k,{key:k,sleep:null,sum:null});return days.get(k)};
+  list.filter(r=>r&&r.saved&&r.fatigue).forEach(r=>{const e=get(logicalDay(r));if(!e.sum||String(r.saved)>String(e.sum.saved))e.sum=r});
+  dedupeSleep(list).map(analyze).filter(a=>a&&a.wake<=now).forEach(a=>{
+    const e=get(keyOf(a.wake));if(!e.sleep||String(a.r.saved)>String(e.sleep.r.saved))e.sleep=a});
+  return days;
+}
+
+/* ───── 특성(입력 변수) ───── */
+const hrs=d=>d.getHours()+d.getMinutes()/60;
+const bedRel=d=>{let h=hrs(d);if(h<12)h+=24;return h-18};          // 18시 기준 몇 시간 뒤에 누웠나 (자정 넘김 처리)
+const parseHr=s=>{const h=parseInt(s,10);return isNaN(h)?null:h};   // "14:--" → 14
+const LAT={'짧음':0,'중간':1,'김':2};
+const mean=a=>{const b=a.filter(v=>v!=null&&!isNaN(v));return b.length?b.reduce((s,x)=>s+x,0)/b.length:NaN};
+const FEAT=[
+  {id:'sleepH',  short:'수면 시간',label:'수면 시간'},
+  {id:'sleepH2', short:'수면 시간',label:'수면 시간 (곡선 항)'},
+  {id:'bedH',    short:'취침 시각',label:'취침이 1시간 늦을 때',unit:1},
+  {id:'bedDev',  short:'취침 규칙성',label:'취침이 평소보다 1시간 어긋날 때',unit:1},
+  {id:'prev3',   short:'최근 3일 수면',label:'최근 3일 평균 수면이 1시간 길 때',unit:1},
+  {id:'prevEve', short:'전날 저녁 피로',label:'전날 저녁 피로가 1단계 높을 때',unit:1},
+  {id:'prevCaf', short:'카페인',label:'전날 카페인 1잔 더',unit:1},
+  {id:'cafLate', short:'카페인',label:'전날 오후 3시 이후 카페인',unit:1},
+  {id:'prevEx',  short:'운동',label:'전날 운동 30분 더',unit:30},
+  {id:'prevLoad',short:'일정 강도',label:'전날 일정 강도 1단계 높을 때',unit:1},
+  {id:'latency', short:'잠들기',label:'잠드는 데 1단계 더 오래 걸릴 때',unit:1},
+  {id:'awak',    short:'밤중 깸',label:'밤중에 1번 더 깰 때',unit:1},
+  {id:'weekend', short:'주말',label:'주말',unit:1},
+  {id:'exam',    short:'시험',label:'시험 임박·시험 기간',unit:1}
+];
+const FIDX=Object.fromEntries(FEAT.map((f,i)=>[f.id,i]));
+const S7=7; // 곡선 항의 중심(시간). (수면-7)² 로 넣어 수면 시간과의 상관을 줄임
+
+/* 하루 d의 컨디션(=정답 y): 기상 직후·아침·오후·저녁 피로(1 개운 ~ 5 피곤)의 평균 */
+function targetOf(sum){
+  const f=sum&&sum.fatigue;if(!f)return NaN;
+  return mean(['wake','morning','afternoon','evening'].map(k=>f[k]>0?f[k]:null));
+}
+/* 하루 d의 특성. sleep = {bedH, sleepH} (실측 또는 가정값), d-1 이전 기록은 days에서 찾음 */
+function featuresFor(days,k,sleep,{weekend,examFrom}={}){
+  const prevDays=n=>Array.from({length:n},(_,i)=>days.get(shiftKey(k,-(i+1)))).filter(Boolean);
+  const ps=prevDays(7).filter(e=>e.sleep);
+  const p3=prevDays(3).filter(e=>e.sleep).map(e=>e.sleep.min/60);
+  const bedMean=mean(ps.map(e=>bedRel(e.sleep.bed)));
+  const y=days.get(shiftKey(k,-1)),ys=y&&y.sum;
+  const today=days.get(k),ts=today&&today.sum,tr=today&&today.sleep&&today.sleep.r;
+  const caf=ys?(ys.caffeine?ys.caffeine:{cups:0}):null;
+  const cafH=caf&&caf.cups?Math.max(parseHr(caf.end)??-1,parseHr(caf.start)??-1):-1;
+  const ex=ys&&ys.exercise;
+  const [Y,M,D]=k.split('-').map(Number),wd=new Date(Y,M-1,D).getDay();
+  const ex_=examFrom!==undefined?examFrom:(ts&&ts.day&&ts.day.exam);
+  const x=new Array(FEAT.length).fill(NaN);
+  x[FIDX.sleepH]=sleep.sleepH;
+  x[FIDX.sleepH2]=(sleep.sleepH-S7)**2;
+  x[FIDX.bedH]=sleep.bedH;
+  x[FIDX.bedDev]=isNaN(bedMean)?NaN:Math.abs(sleep.bedH-bedMean);
+  x[FIDX.prev3]=mean(p3);
+  x[FIDX.prevEve]=ys&&ys.fatigue&&ys.fatigue.evening>0?ys.fatigue.evening:NaN;
+  x[FIDX.prevCaf]=caf?caf.cups||0:NaN;
+  x[FIDX.cafLate]=caf?(cafH>=15?1:0):NaN;
+  x[FIDX.prevEx]=ex?(ex.minutes||0)+(ex.pe?45:0):NaN;
+  x[FIDX.prevLoad]=ys&&ys.day&&ys.day.load?ys.day.load:NaN;
+  x[FIDX.latency]=sleep.latency!==undefined?sleep.latency:(tr&&LAT[tr.latency]!=null?LAT[tr.latency]:NaN);
+  x[FIDX.awak]=sleep.awak!==undefined?sleep.awak:(tr&&tr.awakenings!=null?tr.awakenings:NaN);
+  x[FIDX.weekend]=weekend!==undefined?weekend:((wd===0||wd===6)?1:0);
+  x[FIDX.exam]=ex_?(ex_==='여유'?0:1):NaN;
+  return x;
+}
+function buildDataset(list,now=new Date()){
+  const days=buildDays(list,now),rows=[];
+  [...days.values()].sort((a,b)=>a.key<b.key?-1:1).forEach(e=>{
+    if(!e.sleep||!e.sum)return;
+    const y=targetOf(e.sum);if(isNaN(y))return;
+    rows.push({key:e.key,y,x:featuresFor(days,e.key,{sleepH:e.sleep.min/60,bedH:bedRel(e.sleep.bed)}),bed:e.sleep.bed,wake:e.sleep.wake});
+  });
+  return{days,rows};
+}
+
+/* ───── 릿지 회귀 (절편은 벌점 없음, 표준화, 결측은 학습 평균으로 대체) ───── */
+function invert(A){
+  const n=A.length,M=A.map((r,i)=>[...r,...A.map((_,j)=>i===j?1:0)]);
+  for(let i=0;i<n;i++){
+    let p=i;for(let r=i+1;r<n;r++)if(Math.abs(M[r][i])>Math.abs(M[p][i]))p=r;
+    [M[i],M[p]]=[M[p],M[i]];const d=M[i][i];
+    for(let c=0;c<2*n;c++)M[i][c]/=d;
+    for(let r=0;r<n;r++)if(r!==i){const f=M[r][i];if(f)for(let c=0;c<2*n;c++)M[r][c]-=f*M[i][c]}
+  }
+  return M.map(r=>r.slice(n));
+}
+function fitRidge(X,y,cols,alpha){
+  const n=y.length,p=cols.length;
+  const mu=cols.map(j=>{const m=mean(X.map(r=>r[j]));return isNaN(m)?0:m});
+  const sd=cols.map((j,c)=>{const v=X.map(r=>r[j]).filter(v=>!isNaN(v));if(v.length<2)return 1;
+    const s=Math.sqrt(v.reduce((a,x)=>a+(x-mu[c])**2,0)/v.length);return s>1e-9?s:1});
+  const z=x=>cols.map((j,c)=>isNaN(x[j])?0:(x[j]-mu[c])/sd[c]);
+  const Z=X.map(z),ym=y.reduce((a,b)=>a+b,0)/n,yc=y.map(v=>v-ym);
+  const lam=alpha*n;
+  const A=Array.from({length:p},(_,i)=>Array.from({length:p},(_,k)=>Z.reduce((s,r)=>s+r[i]*r[k],0)+(i===k?lam:0)));
+  const Ai=p?invert(A):[];
+  const b=Array.from({length:p},(_,i)=>Z.reduce((s,r,t)=>s+r[i]*yc[t],0));
+  const w=Ai.map(r=>r.reduce((s,v,k)=>s+v*b[k],0));
+  const f=zr=>ym+zr.reduce((s,v,j)=>s+v*w[j],0);
+  /* 정확한 LOO 잔차: e_i / (1 - h_ii),  h_ii = 1/n + z_iᵀ A⁻¹ z_i */
+  const loo=Z.map((zr,i)=>{
+    let h=1/n;for(let a=0;a<p;a++)for(let c=0;c<p;c++)h+=zr[a]*Ai[a][c]*zr[c];
+    return (y[i]-f(zr))/Math.max(1e-6,1-h);
+  });
+  return{cols,alpha,w,mu,sd,ym,loo,predict:x=>f(z(x)),raw:w.map((v,j)=>v/sd[j])};
+}
+const ALPHAS=[0.01,0.03,0.1,0.3,1,3,10];
+const SETS=[
+  [],                                                       // 평균만 (베이스라인도 후보에 포함 → 패턴이 없으면 정직하게 평균을 고름)
+  ['sleepH'],
+  ['sleepH','sleepH2'],
+  ['sleepH','bedH'],
+  ['sleepH','sleepH2','bedH'],
+  ['sleepH','sleepH2','bedH','bedDev','prev3'],
+  ['sleepH','sleepH2','bedH','bedDev','prev3','prevEve','prevCaf','cafLate','prevEx','prevLoad'],
+  FEAT.map(f=>f.id)
+].map(s=>s.map(id=>FIDX[id]));
+const absMean=a=>a.reduce((s,v)=>s+Math.abs(v),0)/a.length;
+/* 후보(특성 묶음 × 규제 강도) 중 LOO 평균절대오차가 가장 작은 것 선택 */
+function selectModel(X,y){
+  let best=null;
+  SETS.forEach((cols,si)=>{
+    (cols.length?ALPHAS:[1]).forEach(a=>{
+      const m=fitRidge(X,y,cols,a),mae=absMean(m.loo);
+      if(!best||mae<best.mae-1e-9)best={m,mae,si};
+    });
+  });
+  return best;
+}
+/* 이중(nested) LOO: '모델 고르기'까지 포함해서 하루씩 빼고 예측 → 정직한 정확도 */
+function nestedLOO(rows){
+  const n=rows.length,preds=new Array(n),base=new Array(n);
+  const K=n>120?10:n;                                  // 기록이 아주 많아지면 연속 10묶음으로 (속도)
+  for(let f=0;f<K;f++){
+    const lo=Math.floor(f*n/K),hi=Math.floor((f+1)*n/K);
+    const tr=rows.filter((_,k)=>k<lo||k>=hi);
+    const s=selectModel(tr.map(r=>r.x),tr.map(r=>r.y)),bm=tr.reduce((a,r)=>a+r.y,0)/tr.length;
+    for(let i=lo;i<hi;i++){preds[i]=s.m.predict(rows[i].x);base[i]=bm}
+  }
+  const err=preds.map((p,i)=>p-rows[i].y),berr=base.map((b,i)=>b-rows[i].y);
+  return{preds,mae:absMean(err),baseMae:absMean(berr),rmse:Math.sqrt(err.reduce((s,e)=>s+e*e,0)/n)};
+}
+
+/* ───── 추천: 가능한 (취침, 기상) 조합을 모두 넣어 보고 예측 피로가 가장 낮은 것 ───── */
+function recommend(model,ds,{latestWake,fixedWake,now=new Date()}){
+  const R=ds.rows,step=0.25;
+  const bedLo=Math.min(...R.map(r=>bedRel(r.bed))),bedHi=Math.max(...R.map(r=>bedRel(r.bed)));
+  const wkLo=Math.min(...R.map(r=>hrs(r.wake))),wkHi=Math.max(...R.map(r=>hrs(r.wake)));
+  const slLo=Math.min(...R.map(r=>r.x[FIDX.sleepH])),slHi=Math.max(...R.map(r=>r.x[FIDX.sleepH]));
+  const todayK=keyOf(new Date(+now-5*3600e3)),tomK=shiftKey(todayK,1);
+  const [Y,M,D]=tomK.split('-').map(Number),wd=new Date(Y,M-1,D).getDay();
+  const tdy=ds.days.get(todayK),exam=tdy&&tdy.sum&&tdy.sum.day?tdy.sum.day.exam:undefined;
+  const wakes=fixedWake?[latestWake]:[];
+  if(!fixedWake)for(let w=Math.ceil(wkLo/step)*step;w<=Math.min(wkHi,latestWake)+1e-9;w+=step)wakes.push(w);
+  const out=[];
+  wakes.forEach(w=>{
+    for(let b=Math.ceil(bedLo/step)*step;b<=bedHi+1e-9;b+=step){
+      const sl=6+w-b;                                  // (24+기상) - (18+취침)
+      if(sl<slLo-1e-9||sl>slHi+1e-9)continue;           // 기록에 없던 수면 길이는 추천하지 않음 (외삽 금지)
+      const x=featuresFor(ds.days,tomK,{sleepH:sl,bedH:b,latency:NaN,awak:NaN},{weekend:(wd===0||wd===6)?1:0,examFrom:exam});
+      out.push({bed:b,wake:w,sleep:sl,y:model.predict(x)});
+    }
+  });
+  out.sort((a,b)=>a.y-b.y);
+  return{list:out,bedLo,bedHi,wkLo,wkHi,tomK};
+}
+/*MODEL-END*/
+
+/* ───── 표시 ───── */
+const score=y=>Math.round((5-y)*25);                  // 피로 1~5 → 컨디션 100~0점
+const clock=h=>{let m=Math.round(h*60);m=((m%1440)+1440)%1440;return pad2(Math.floor(m/60))+':'+pad2(m%60)};
+const bedClock=b=>clock(b+18);
+const dur=h=>`${Math.floor(h+1e-9)}시간 ${pad2(Math.round((h-Math.floor(h+1e-9))*60))}분`;
+const NS='http://www.w3.org/2000/svg';
+const svgEl=(t,a={},txt)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;return e};
+const W=354;
+function lineChart(host,{xs,series,band,xfmt,yfmt=v=>v,ylo,yhi,mark}){
+  host.innerHTML='';
+  const H=190,L=34,R=10,T=14,B=26,iw=W-L-R,ih=H-T-B,n=xs.length;
+  const X=i=>L+(n===1?iw/2:iw*i/(n-1)),Y=v=>T+ih*(1-(v-ylo)/(yhi-ylo));
+  const s=svgEl('svg',{viewBox:`0 0 ${W} ${H}`});
+  const st=(yhi-ylo)>40?20:10;
+  for(let v=Math.ceil(ylo/st)*st;v<=yhi;v+=st){
+    s.append(svgEl('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),stroke:'rgba(255,255,255,.1)'}));
+    s.append(svgEl('text',{x:L-6,y:Y(v)+3,'text-anchor':'end'},yfmt(v)));
+  }
+  if(band){
+    const up=band.map((b,i)=>`${X(i)},${Y(b[1])}`),dn=band.map((b,i)=>`${X(i)},${Y(b[0])}`).reverse();
+    s.append(svgEl('polygon',{points:[...up,...dn].join(' '),fill:'rgba(111,180,255,.15)'}));
+  }
+  series.forEach(se=>{
+    s.append(svgEl('polyline',{points:se.y.map((v,i)=>v==null?null:`${X(i)},${Y(v)}`).filter(Boolean).join(' '),fill:'none',stroke:se.color,'stroke-width':2,'stroke-linejoin':'round',opacity:se.dots?.55:1}));
+    if(se.dots)se.y.forEach((v,i)=>v!=null&&s.append(svgEl('circle',{cx:X(i),cy:Y(v),r:3.5,fill:se.color})));
+  });
+  if(mark!=null){s.append(svgEl('circle',{cx:X(mark),cy:Y(series[0].y[mark]),r:6,fill:'#ffb347'}))}
+  const every=Math.max(1,Math.ceil(n/6));
+  xs.forEach((x,i)=>{if(i%every===0||i===n-1)s.append(svgEl('text',{x:X(i),y:H-6,'text-anchor':'middle'},xfmt(x)))});
+  host.append(s);
+}
+
+let ALL=[],fixedWake=LS.get('sleep.pred.fixed',true),latestWake=LS.get('sleep.pred.wake',null);
+function render(){
+  const host=$('#sections');host.innerHTML='';
+  const ds=buildDataset(ALL),R=ds.rows,n=R.length;
+  $('#date').textContent=`학습에 쓸 수 있는 날 ${n}일`;
+  if(n<8){host.append(el('div','card',`<div class="empty">수면 기록과 하루 기분이 함께 있는 날이<br>8일 이상 쌓이면 예측을 시작해요. (현재 ${n}일)</div>`));return}
+
+  const X=R.map(r=>r.x),Y=R.map(r=>r.y);
+  const sel=selectModel(X,Y),model=sel.m;
+  const cv=nestedLOO(R);
+  const skill=1-cv.mae/cv.baseMae,useful=skill>0&&sel.si>0;
+  if(latestWake==null){const w=R.map(r=>hrs(r.wake)).sort((a,b)=>a-b);latestWake=Math.round(w[Math.floor(w.length/2)]*4)/4}
+
+  /* 1. 추천 */
+  const c1=el('div','card');
+  c1.innerHTML=`<div class="ct">오늘 밤 추천</div><div class="cs">기록된 범위 안에서 내일 컨디션이 가장 좋을 것으로 예측되는 시각이에요.</div>
+    <div class="row"><label for="wk">${fixedWake?'내일 기상 시각':'늦어도 이 시각엔 기상'}</label><input id="wk" type="time" step="900" value="${clock(latestWake)}"></div>
+    <div class="chips" style="margin:0 4px 16px"><button type="button" data-f="1" class="${fixedWake?'on':''}">기상 시각 고정</button><button type="button" data-f="0" class="${fixedWake?'':'on'}">기상 시각도 추천</button></div>
+    <div class="res"></div>`;
+  host.append(c1);
+  const c2=el('div','card');
+  c2.innerHTML=`<div class="ct">취침 시각별 예상 컨디션</div><div class="cs">선은 예측값, 띠는 평소 오차 범위(±1 RMSE). 주황 점이 추천 시각.</div><div class="h"></div>`;
+  host.append(c2);
+  const drawRec=()=>{
+    const rec=recommend(model,ds,{latestWake,fixedWake}),res=$('.res',c1);
+    if(!rec.list.length){res.innerHTML=`<div class="note warn">이 기상 시각으로는 기록된 수면 길이 범위 안의 조합이 없어요. 기상 시각을 바꿔 보세요.</div>`;$('.h',c2).innerHTML='<div class="empty">표시할 조합 없음</div>';return}
+    const b=rec.list[0],tol=Math.max(0.04,cv.rmse*0.25);
+    const near=rec.list.filter(r=>r.wake===b.wake&&r.y<=b.y+tol).map(r=>r.bed);
+    const nLo=Math.min(...near),nHi=Math.max(...near);
+    res.innerHTML=`<div class="big"><div><span>취침</span><b>${bedClock(b.bed)}</b></div><div><span>기상</span><b>${clock(b.wake)}</b></div>
+      <div class="wide"><div><span>예상 컨디션</span><b>${score(b.y)}점 <small style="font-size:14px;color:#9aa3c0">±${Math.round(cv.rmse*25)}</small></b></div><div style="text-align:right"><span>수면</span><b style="font-size:18px">${dur(b.sleep)}</b></div></div></div>
+      <div class="note">${nLo<nHi?`${bedClock(nLo)}~${bedClock(nHi)} 사이에 자면 예측 차이가 거의 없어요 (오차보다 작음).<br>`:''}
+      ${useful?'':'<span class="warn">⚠︎ 아직 수면 패턴으로 컨디션을 맞히는 실력이 평균값보다 낫지 않아요. 참고용으로만 보세요.</span>'}</div>`;
+    const curve=rec.list.filter(r=>r.wake===b.wake).sort((p,q)=>p.bed-q.bed);
+    const ys=curve.map(r=>score(r.y)),e=cv.rmse*25;
+    const lo=Math.max(0,Math.floor((Math.min(...ys)-e-5)/10)*10),hi=Math.min(100,Math.ceil((Math.max(...ys)+e+5)/10)*10);
+    lineChart($('.h',c2),{xs:curve.map(r=>r.bed),series:[{y:ys,color:'#6fb4ff'}],band:ys.map(v=>[Math.max(lo,v-e),Math.min(hi,v+e)]),xfmt:bedClock,ylo:lo,yhi:hi,mark:curve.findIndex(r=>r.bed===b.bed)});
+  };
+  $('#wk',c1).onchange=ev=>{const [h,m]=ev.target.value.split(':').map(Number);if(!isNaN(h)){latestWake=h+m/60;LS.set('sleep.pred.wake',latestWake);drawRec()}};
+  c1.querySelectorAll('.chips button').forEach(bt=>bt.onclick=()=>{fixedWake=bt.dataset.f==='1';LS.set('sleep.pred.fixed',fixedWake);render()});
+  drawRec();
+
+  /* 3. 정확도 */
+  const c3=el('div','card');
+  c3.innerHTML=`<div class="ct">예측 정확도</div><div class="cs">하루씩 빼고 나머지로 모델을 고르고 학습한 뒤 그 하루를 맞혀 본 결과예요(이중 LOO). 한 번도 보지 못한 날을 맞힌 오차라서 정직한 값이에요.</div>
+   <div class="sgrid" style="margin:0 0 14px">
+    <div class="stat"><span>평균 오차</span><b>±${(cv.mae*25).toFixed(1)}점</b></div>
+    <div class="stat"><span>평균값만 썼을 때</span><b>±${(cv.baseMae*25).toFixed(1)}점</b></div>
+    <div class="stat" style="grid-column:1/3"><span>평균값 대비 개선</span><b class="${skill>0?'':'warn'}">${skill>0?'+':''}${Math.round(skill*100)}%</b></div>
+   </div>
+   <div class="note">선택된 모델: ${sel.si===0?'평균값 (아직 뚜렷한 패턴 없음)':[...new Set(SETS[sel.si].map(j=>FEAT[j].short))].join(' · ')+` (규제 α=${model.alpha})`}</div>`;
+  host.append(c3);
+
+  /* 4. 예측 vs 실제 */
+  const c4=el('div','card');
+  c4.innerHTML=`<div class="ct">예측 vs 실제</div><div class="cs">각 날을 빼고 학습했을 때의 예측(보라)과 실제 컨디션(파랑).</div><div class="h"></div><div class="legend"><span><i style="background:#6fb4ff"></i>실제</span><span><i style="background:#b78cff"></i>예측</span></div>`;
+  host.append(c4);
+  const act=R.map(r=>score(r.y)),pr=cv.preds.map(score);
+  lineChart($('.h',c4),{xs:R.map(r=>r.key),series:[{y:act,color:'#6fb4ff',dots:true},{y:pr,color:'#b78cff',dots:true}],xfmt:k=>{const [,M,D]=k.split('-');return +M+'/'+(+D)},
+    ylo:Math.max(0,Math.floor((Math.min(...act,...pr)-5)/10)*10),yhi:Math.min(100,Math.ceil((Math.max(...act,...pr)+5)/10)*10)});
+
+  /* 5. 영향 요인 */
+  const c5=el('div','card');
+  let items='';
+  const raw=j=>{const c=model.cols.indexOf(j);return c<0?null:model.raw[c]};
+  const b1=raw(FIDX.sleepH),b2=raw(FIDX.sleepH2);
+  if(b1!=null){
+    if(b2!=null&&b2>1e-6){const opt=S7-b1/(2*b2);
+      const lo=Math.min(...R.map(r=>r.x[FIDX.sleepH])),hi=Math.max(...R.map(r=>r.x[FIDX.sleepH]));
+      items+=`<li><span>컨디션이 가장 좋은 수면 시간</span><b>${opt<lo?'기록 범위보다 짧음':opt>hi?dur(hi)+' 이상 (기록 범위 끝)':dur(opt)}</b></li>`}
+    else{const v=-25*(b1+(b2||0)*(2*(mean(R.map(r=>r.x[FIDX.sleepH]))-S7)));items+=`<li><span>평균 근처에서 수면 1시간 늘 때</span><b class="${v>=0?'p':'m'}">${v>=0?'+':''}${v.toFixed(1)}점</b></li>`}
+  }
+  model.cols.forEach((j,c)=>{
+    const f=FEAT[j];if(!f.unit)return;
+    const v=-25*model.raw[c]*f.unit;if(Math.abs(v)<0.5)return;
+    items+=`<li><span>${f.label}</span><b class="${v>=0?'p':'m'}">${v>=0?'+':''}${v.toFixed(1)}점</b></li>`;
+  });
+  c5.innerHTML=`<div class="ct">무엇이 컨디션을 바꾸나</div><div class="cs">선택된 모델의 계수예요. 다른 조건이 같을 때의 차이이고, 기록이 적으면 크게 흔들릴 수 있어요. 인과관계가 아니라 '함께 나타난 경향'이에요.</div>${items?`<ul class="eff">${items}</ul>`:'<div class="empty">아직 뚜렷한 요인이 없어요</div>'}`;
+  host.append(c5);
+}
+ALL=collect(LS.get('sleep.cache',[]));render();
+load().then(r=>{if(r){ALL=r;render()}});
+</script>
+</body>
+</html>
